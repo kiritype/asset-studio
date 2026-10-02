@@ -6,6 +6,7 @@
 /backups/
 /reports/
 /notes/
+/docs/
 
 # External tools are installed separately (see the docs); local patches go to patches/
 /vendor/
