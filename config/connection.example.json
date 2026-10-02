@@ -1,0 +1,9 @@
+{
+  "url": "http://127.0.0.1:8188",
+  "python_path": "<ComfyUI python.exe>",
+  "comfy_path": "<ComfyUI folder that holds main.py>",
+  "arguments": [
+    "--preview-method",
+    "auto"
+  ]
+}

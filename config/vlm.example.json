@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "url": "",
+  "url_env": "",
+  "model": "",
+  "model_env": "",
+  "api_key_env": "ASSET_STUDIO_VLM_API_KEY",
+  "load_command": [],
+  "unload_command": [],
+  "status_command": [],
+  "loaded_marker": "",
+  "command_timeout_seconds": 120,
+  "request_timeout_seconds": 180
+}

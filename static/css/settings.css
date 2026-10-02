@@ -1,0 +1,368 @@
+#app-settings {
+  --s-bg: var(--surface, #fff);
+  --s-soft: var(--surface-soft, #f5f6f8);
+  --s-border: var(--border, #d9dee5);
+  --s-text: var(--text, #202733);
+  --s-muted: var(--muted, #687381);
+  --s-accent: var(--accent, #6b4eff);
+  color: var(--s-text);
+  max-width: 1000px;
+}
+#app-settings * {
+  box-sizing: border-box;
+}
+#app-settings button,
+#app-settings input,
+#app-settings textarea {
+  font: inherit;
+}
+#app-settings .s-heading {
+  margin: 0 0 1.4rem;
+}
+#app-settings .s-heading h1 {
+  font-size: 2rem;
+  line-height: 1.15;
+  margin: 0.15rem 0 0.4rem;
+}
+#app-settings .s-heading p {
+  margin: 0;
+  color: var(--s-muted);
+}
+#app-settings .s-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: var(--s-accent);
+}
+#app-settings .s-card {
+  background: var(--s-bg);
+  border: 1px solid var(--s-border);
+  border-radius: 1rem;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+}
+#app-settings .s-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+#app-settings .s-card-head h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.2rem;
+}
+#app-settings .s-card-head p {
+  margin: 0.2rem 0 0;
+}
+#app-settings .s-button {
+  cursor: pointer;
+  min-height: 2.45rem;
+  padding: 0.48rem 0.85rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--s-border);
+  background: var(--s-bg);
+  color: var(--s-text);
+}
+#app-settings .s-button:hover:not(:disabled) {
+  border-color: var(--s-accent);
+  color: var(--s-accent);
+}
+#app-settings .s-button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+#app-settings .s-button.s-primary {
+  background: var(--s-accent);
+  border-color: var(--s-accent);
+  color: #fff;
+}
+#app-settings .s-button.s-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  color: #fff;
+}
+#app-settings .s-status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  font-size: 1rem;
+}
+#app-settings .s-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: none;
+  border-radius: 50%;
+  background: #9ba2ad;
+}
+#app-settings .s-dot.connected {
+  background: #30b775;
+  box-shadow: 0 0 0 4px rgba(48, 183, 117, 0.13);
+}
+#app-settings .s-dot.working {
+  background: #e8a442;
+  box-shadow: 0 0 0 4px rgba(232, 164, 66, 0.13);
+}
+#app-settings .s-tag {
+  border-radius: 999px;
+  background: var(--s-soft);
+  padding: 0.25rem 0.55rem;
+  color: var(--s-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+#app-settings .s-dirty {
+  color: #976500;
+  background: #fff3d9;
+}
+#app-settings .s-dirty[hidden] {
+  display: none;
+}
+#app-settings .s-muted {
+  color: var(--s-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+#app-settings .s-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+#app-settings .s-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 105px;
+  max-width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--s-border);
+  border-radius: 0.6rem;
+  background: var(--s-soft);
+  font-size: 0.72rem;
+}
+#app-settings .s-stat span {
+  color: var(--s-muted);
+}
+#app-settings .s-stat strong {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+#app-settings .s-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+#app-settings .s-control-row[hidden] {
+  display: none;
+}
+#app-settings .s-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+#app-settings .s-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+#app-settings .s-field:first-child,
+#app-settings .s-field:last-of-type {
+  grid-column: 1/-1;
+}
+#app-settings .s-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+#app-settings .s-field input,
+#app-settings .s-field textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--s-border);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--s-bg);
+  color: var(--s-text);
+}
+#app-settings .s-field textarea {
+  resize: vertical;
+  min-height: 7rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+#app-settings .s-field input:focus,
+#app-settings .s-field textarea:focus {
+  outline: 2px solid var(--s-accent);
+  outline-offset: 1px;
+}
+#app-settings .s-form-actions {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+#app-settings .s-review-status {
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.6rem;
+  background: var(--s-soft);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+#app-settings .s-review-form {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+#app-settings .s-review-form .s-field {
+  max-width: 230px;
+}
+#app-settings .s-review-form .s-field input {
+  max-width: 140px;
+}
+#app-settings .s-review-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  cursor: pointer;
+}
+#app-settings .s-review-check input {
+  accent-color: var(--s-accent);
+}
+@media (max-width: 650px) {
+  #app-settings .s-heading h1 {
+    font-size: 1.55rem;
+  }
+  #app-settings .s-card {
+    padding: 1rem;
+  }
+  #app-settings .s-form {
+    grid-template-columns: 1fr;
+  }
+  #app-settings .s-field:first-child,
+  #app-settings .s-field:last-of-type,
+  #app-settings .s-form-actions {
+    grid-column: auto;
+  }
+  #app-settings .s-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+:root[data-theme='dark'] #app-settings {
+  --s-bg: var(--surface, #20242b);
+  --s-soft: var(--surface-soft, #292e37);
+  --s-border: var(--border, #3a424d);
+  --s-text: var(--text, #f2f4f7);
+  --s-muted: var(--muted, #aab4bf);
+}
+:root[data-theme='dark'] #app-settings .s-dirty {
+  color: #ffe2a1;
+  background: #5a4223;
+}
+
+#app-settings .s-section-form {
+  display: grid;
+  gap: 0.2rem;
+}
+#app-settings .s-form-field {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.35rem 0;
+}
+#app-settings .s-form-field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+#app-settings .s-section-form input[type='text'],
+#app-settings .s-section-form input[type='number'],
+#app-settings .s-section-form select,
+#app-settings .s-section-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--s-border, #d9e0eb);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+#app-settings .s-section-form textarea {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+}
+#app-settings .s-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+#app-settings .s-inline input {
+  flex: 1;
+}
+#app-settings .s-check-line {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0.35rem 0;
+  font-weight: 600;
+}
+#app-settings .s-fieldset {
+  margin: 0.5rem 0;
+  padding: 0.4rem 0.8rem 0.6rem;
+  border: 1px solid var(--s-border, #d9e0eb);
+  border-radius: 8px;
+}
+#app-settings .s-fieldset legend {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+#app-settings .s-grid4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 0.8rem;
+}
+#app-settings .s-ok {
+  color: #23784a;
+}
+#app-settings .s-missing {
+  color: #b42318;
+}
+:root[data-theme='dark'] #app-settings .s-ok {
+  color: #7cd6a2;
+}
+:root[data-theme='dark'] #app-settings .s-missing {
+  color: #f09a90;
+}
+
+/* ComfyUI installs found by "find automatically". */
+#app-settings .s-locate {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+#app-settings .s-locate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--s-border);
+  border-radius: 10px;
+}
+#app-settings .s-locate-row > div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#app-settings .s-form .s-locate {
+  grid-column: 1 / -1;
+}
+#app-settings .s-locate-row .s-button {
+  flex: none;
+  white-space: nowrap;
+}

@@ -1,0 +1,24 @@
+# Runtime data, generated images and local records (never committed)
+/data/
+/outputs/
+/logs/
+/archives/
+/backups/
+/reports/
+/notes/
+
+# External tools are installed separately (see the docs); local patches go to patches/
+/vendor/
+
+# Machine-specific launch settings
+launch.local.bat
+
+__pycache__/
+*.py[cod]
+.ruff_cache/
+node_modules/
+*.tmp
+
+# Manual build output (published to the gh-pages branch, never committed here)
+/manual/.vitepress/dist/
+/manual/.vitepress/cache/

@@ -1,0 +1,380 @@
+#app-library {
+  --lib-border: #e5eaf0;
+  --lib-text: #243044;
+  --lib-muted: #8993a4;
+  --lib-bg: #f5f7fb;
+  --lib-panel: #fff;
+  --lib-sidebar: #fbfcfe;
+  --lib-input: #fff;
+  --lib-button: #fff;
+  --lib-accent: #695ee8;
+  --lib-active: #f2efff;
+  --lib-active-border: #b5aff4;
+  color: var(--lib-text);
+  background: var(--lib-bg);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  font:
+    14px/1.5 system-ui,
+    -apple-system,
+    sans-serif;
+}
+#app-library * {
+  box-sizing: border-box;
+}
+#app-library .lib-heading {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--lib-border);
+}
+#app-library h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+#app-library h2 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+}
+#app-library .lib-sidebar {
+  border-right: 1px solid var(--lib-border);
+  background: var(--lib-sidebar);
+  padding: 1rem;
+  min-width: 0;
+  overflow: auto;
+  max-height: calc(100vh - 70px);
+}
+#app-library .lib-main {
+  padding: 1.4rem;
+  min-width: 0;
+}
+#app-library .lib-works {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+#app-library .lib-works .lib-field {
+  flex: 1;
+  min-width: 0;
+}
+#app-library .lib-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+#app-library .lib-field small {
+  font-weight: 400;
+  color: var(--lib-muted);
+}
+#app-library input:not([type='checkbox']),
+#app-library select,
+#app-library textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--lib-border);
+  background: var(--lib-input);
+  color: var(--lib-text);
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+  font: inherit;
+}
+#app-library textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+#app-library input:focus-visible,
+#app-library select:focus-visible,
+#app-library textarea:focus-visible,
+#app-library button:focus-visible,
+#app-library summary:focus-visible {
+  outline: 2px solid var(--lib-accent);
+  outline-offset: 2px;
+}
+#app-library button {
+  border: 1px solid var(--lib-border);
+  background: var(--lib-button);
+  color: var(--lib-text);
+  border-radius: 6px;
+  padding: 0.48rem 0.7rem;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+#app-library button:hover {
+  border-color: var(--lib-accent);
+}
+#app-library .lib-primary {
+  background: #6c5ee7;
+  border-color: #6c5ee7;
+  color: #fff;
+}
+#app-library .lib-danger {
+  color: #c84a59;
+  border-color: #efc9cf;
+  background: #fff6f7;
+}
+#app-library .lib-muted {
+  background: transparent;
+}
+#app-library .lib-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 1rem 0;
+}
+#app-library .lib-group {
+  border-top: 1px solid var(--lib-border);
+  padding: 0.45rem 0;
+}
+#app-library .lib-group summary {
+  cursor: pointer;
+  font-weight: 650;
+  padding: 0.28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+#app-library .lib-character {
+  margin-left: 0.6rem;
+  border: 0;
+}
+#app-library .lib-item,
+#app-library .lib-add {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 0.18rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: transparent;
+  border-color: transparent;
+  white-space: nowrap;
+}
+#app-library .lib-item.active {
+  background: var(--lib-active);
+  border-color: var(--lib-active-border);
+}
+#app-library .lib-add {
+  color: var(--lib-accent);
+}
+#app-library .lib-dot,
+#app-library .lib-dirty {
+  color: #a56c12;
+}
+#app-library .lib-editor,
+#app-library .lib-new,
+#app-library .lib-trash {
+  max-width: 920px;
+}
+#app-library .lib-editor-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+#app-library .lib-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+#app-library .lib-status {
+  margin: 0 0 1rem;
+  min-height: 1.2rem;
+  color: #188759;
+}
+#app-library .lib-status.error {
+  color: #b84f65;
+}
+#app-library .lib-conflict {
+  border: 1px solid #e5bf9d;
+  background: #fff8ed;
+  border-radius: 6px;
+  padding: 0.7rem;
+  margin-bottom: 1rem;
+}
+#app-library .lib-conflict summary {
+  cursor: pointer;
+  color: #8e5b22;
+}
+#app-library .lib-conflict pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+#app-library .lib-empty {
+  color: var(--lib-muted);
+}
+#app-library .lib-trash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--lib-border);
+  padding: 0.7rem 0;
+}
+#app-library .lib-scopes {
+  display: flex;
+  gap: 0.3rem;
+}
+#app-library .lib-scope {
+  flex: 1;
+  padding: 0.4rem 0.3rem;
+}
+#app-library .lib-scope[aria-selected='true'] {
+  background: var(--lib-active);
+  border-color: var(--lib-active-border);
+  font-weight: 700;
+}
+#app-library button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+#app-library .lib-nested {
+  margin-left: 0.7rem;
+  border-top: 0;
+  padding: 0.1rem 0;
+}
+#app-library .lib-nested summary {
+  font-weight: 600;
+}
+#app-library .lib-path,
+#app-library .lib-hint {
+  color: var(--lib-muted);
+  margin: -0.4rem 0 1rem;
+}
+#app-library .lib-hint {
+  margin: 0.4rem 0;
+}
+#app-library .lib-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+}
+#app-library .lib-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+#app-library .lib-slots {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 400;
+}
+#app-library .lib-slot-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+#app-library .lib-slot-preview {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: var(--lib-muted);
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#app-library .lib-move {
+  border: 1px solid var(--lib-border);
+  border-radius: 6px;
+  padding: 0.7rem;
+  margin-bottom: 1.5rem;
+}
+#app-library .lib-move summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+#app-library .lib-move[open] summary {
+  margin-bottom: 0.8rem;
+}
+#app-library .lib-family {
+  display: inline-block;
+  min-width: 2.6rem;
+  margin-right: 0.35rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--lib-border);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-align: center;
+  color: var(--lib-muted);
+}
+#app-library .lib-family-sdxl {
+  border-color: #e0a95b;
+  color: #9a5d0d;
+}
+#app-library .lib-family-shared {
+  border-color: #7cc49b;
+  color: #23784a;
+}
+@media (max-width: 760px) {
+  #app-library {
+    display: block;
+  }
+  #app-library .lib-heading {
+    padding: 0.8rem 1rem;
+  }
+  #app-library .lib-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--lib-border);
+    max-height: 42vh;
+  }
+  #app-library .lib-main {
+    padding: 1rem;
+  }
+}
+:root[data-theme='dark'] #app-library {
+  --lib-border: #344054;
+  --lib-text: #e5e9f0;
+  --lib-muted: #aab4c3;
+  --lib-bg: #141b27;
+  --lib-panel: #1b2533;
+  --lib-sidebar: #19212e;
+  --lib-input: #101722;
+  --lib-button: #263446;
+  --lib-accent: #70b4ff;
+  --lib-active: #254567;
+  --lib-active-border: #4d8ac3;
+}
+:root[data-theme='dark'] #app-library .lib-primary {
+  background: #245c91;
+  border-color: #397db9;
+}
+:root[data-theme='dark'] #app-library .lib-danger {
+  color: #ffb5b5;
+  border-color: #8b4343;
+  background: #4a292e;
+}
+:root[data-theme='dark'] #app-library .lib-dot,
+:root[data-theme='dark'] #app-library .lib-dirty {
+  color: #ffd17b;
+}
+:root[data-theme='dark'] #app-library .lib-status {
+  color: #a8dbad;
+}
+:root[data-theme='dark'] #app-library .lib-status.error {
+  color: #ffafaf;
+}
+:root[data-theme='dark'] #app-library .lib-conflict {
+  border-color: #a96948;
+  background: #362b29;
+}
+:root[data-theme='dark'] #app-library .lib-conflict summary {
+  color: #ffd3a5;
+}
+#app-library .lib-heading-actions {
+  display: flex;
+  gap: 0.5rem;
+}

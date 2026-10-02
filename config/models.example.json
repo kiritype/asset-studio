@@ -1,0 +1,4 @@
+{
+  "models_dir": "<shared model folder, e.g. StabilityMatrix/Models>",
+  "families": {}
+}

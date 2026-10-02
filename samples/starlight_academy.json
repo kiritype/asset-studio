@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "id": "starlight_academy",
+  "name": "Starlight Academy",
+  "description": "An invented magic academy with two students, their uniforms, five expressions and two compositions. Everything is kept inside this work.",
+  "work": {
+    "name": "Starlight Academy (sample)",
+    "prompt": ["fantasy"],
+    "negative_prompt": [],
+    "model_family": "anima"
+  },
+  "work_pieces": [
+    {
+      "bucket": "composition",
+      "piece": {
+        "id": "P001",
+        "name": "Upper body",
+        "prompt": ["upper body", "straight-on", "looking at viewer"],
+        "suggest_slots": ["hands", "top"]
+      }
+    },
+    {
+      "bucket": "composition",
+      "piece": {
+        "id": "P002",
+        "name": "Full body",
+        "prompt": ["full body", "standing", "straight-on", "looking at viewer"],
+        "suggest_slots": ["hands", "top", "bottom", "shoes"]
+      }
+    },
+    {
+      "bucket": "expression/sfw",
+      "piece": {
+        "id": "001",
+        "name": "Neutral",
+        "prompt": ["expressionless", "closed mouth", "arms at sides"],
+        "composition_id": "P001"
+      }
+    },
+    {
+      "bucket": "expression/sfw",
+      "piece": {
+        "id": "002",
+        "name": "Smile",
+        "prompt": ["smile", "open mouth", "waving"],
+        "composition_id": "P001"
+      }
+    },
+    {
+      "bucket": "expression/sfw",
+      "piece": {
+        "id": "003",
+        "name": "Surprised",
+        "prompt": ["surprised", "open mouth", "wide-eyed"],
+        "composition_id": "P001"
+      }
+    },
+    {
+      "bucket": "expression/sfw",
+      "piece": {
+        "id": "004",
+        "name": "Thinking",
+        "prompt": ["thinking", "hand on own chin", "looking up"],
+        "composition_id": "P001"
+      }
+    },
+    {
+      "bucket": "expression/sfw",
+      "piece": {
+        "id": "005",
+        "name": "Determined",
+        "prompt": ["serious", "closed mouth", "clenched hands"],
+        "negative_prompt": ["smile"],
+        "composition_id": "P001"
+      }
+    },
+    {
+      "bucket": "common/positive",
+      "piece": {
+        "id": "Q001",
+        "name": "Quality",
+        "prompt": ["masterpiece", "best quality", "newest", "white background", "simple background"]
+      }
+    },
+    {
+      "bucket": "common/negative",
+      "piece": {
+        "id": "Q001",
+        "name": "Quality",
+        "prompt": ["worst quality", "low quality", "bad hands", "extra digits", "multiple views", "signature", "watermark"]
+      }
+    }
+  ],
+  "characters": [
+    {
+      "id": "C001",
+      "name": "Lyra Vance",
+      "prompt": ["1girl", "solo", "long hair", "grey hair", "straight hair", "blue eyes", "small breasts"],
+      "negative_prompt": [],
+      "default_outfit": "001",
+      "outfit_pieces": [
+        {"bucket": "outfit/top", "piece": {"id": "001", "name": "Uniform top", "prompt": ["white shirt", "blue necktie", "blue jacket", "school uniform"]}},
+        {"bucket": "outfit/bottom", "piece": {"id": "001", "name": "Uniform skirt", "prompt": ["pleated skirt", "blue skirt"]}},
+        {"bucket": "outfit/shoes", "piece": {"id": "001", "name": "Uniform shoes", "prompt": ["black thighhighs", "loafers"]}},
+        {"bucket": "outfit/full", "piece": {"id": "002", "name": "Mage robe", "prompt": ["witch hat", "black robe", "long sleeves", "holding staff"]}}
+      ],
+      "outfit_sets": [
+        {
+          "id": "001",
+          "name": "Academy uniform",
+          "slots": {
+            "top": {"scope": "character", "id": "001"},
+            "bottom": {"scope": "character", "id": "001"},
+            "shoes": {"scope": "character", "id": "001"}
+          }
+        },
+        {
+          "id": "002",
+          "name": "Mage robe",
+          "slots": {"full": {"scope": "character", "id": "002"}}
+        }
+      ]
+    },
+    {
+      "id": "C002",
+      "name": "Kai Rowan",
+      "prompt": ["1boy", "solo", "short hair", "black hair", "spiked hair", "red eyes"],
+      "negative_prompt": ["1girl"],
+      "default_outfit": "001",
+      "outfit_pieces": [
+        {"bucket": "outfit/top", "piece": {"id": "001", "name": "Uniform top", "prompt": ["white shirt", "red necktie", "black jacket", "school uniform"]}},
+        {"bucket": "outfit/bottom", "piece": {"id": "001", "name": "Uniform trousers", "prompt": ["black pants"]}},
+        {"bucket": "outfit/shoes", "piece": {"id": "001", "name": "Uniform shoes", "prompt": ["brown shoes", "loafers"]}}
+      ],
+      "outfit_sets": [
+        {
+          "id": "001",
+          "name": "Academy uniform",
+          "slots": {
+            "top": {"scope": "character", "id": "001"},
+            "bottom": {"scope": "character", "id": "001"},
+            "shoes": {"scope": "character", "id": "001"}
+          }
+        }
+      ]
+    }
+  ]
+}

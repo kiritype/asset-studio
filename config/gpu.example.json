@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "min_free_vram_mb": {
+    "generation": 2048,
+    "tool": 1024,
+    "vlm": 16384,
+    "training": 16384
+  },
+  "watch_processes": []
+}

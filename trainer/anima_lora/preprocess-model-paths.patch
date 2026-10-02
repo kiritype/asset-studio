@@ -1,0 +1,34 @@
+diff --git a/scripts/tasks/preprocess.py b/scripts/tasks/preprocess.py
+index dbe645f..fe27cd0 100644
+--- a/scripts/tasks/preprocess.py
++++ b/scripts/tasks/preprocess.py
+@@ -820,7 +820,7 @@ def cmd_preprocess_vae(extra):
+             "--cache_dir",
+             _path("lora_cache_dir", "post_image_dataset/lora"),
+             "--vae",
+-            "models/vae/qwen_image_vae.safetensors",
++            _path("vae", "models/vae/qwen_image_vae.safetensors"),  # asset-studio patch
+             "--batch_size",
+             "1",
+             "--chunk_size",
+@@ -850,7 +850,7 @@ def _run_demote_pass(route: str, extra) -> None:
+             "--cache_dir",
+             _path("lora_cache_dir", "post_image_dataset/lora"),
+             "--vae",
+-            "models/vae/qwen_image_vae.safetensors",
++            _path("vae", "models/vae/qwen_image_vae.safetensors"),  # asset-studio patch
+             "--batch_size",
+             "1",
+             "--chunk_size",
+@@ -1081,9 +1081,9 @@ def cmd_preprocess_te(extra, caption_config: dict[str, object] | None = None):
+             _path("lora_cache_dir", "post_image_dataset/lora"),
+             *match_args,
+             "--qwen3",
+-            _QWEN3_TOKENIZER,
++            _path("qwen3", _QWEN3_TOKENIZER),  # asset-studio patch
+             "--dit",
+-            "models/diffusion_models/anima-base-v1.0.safetensors",
++            _path("pretrained_model_name_or_path", "models/diffusion_models/anima-base-v1.0.safetensors"),  # asset-studio patch
+             # Fallback only — ignored when a {stem}.variants.txt sidecar is
+             # present; drives in-process generation otherwise.
+             "--caption_shuffle_variants",

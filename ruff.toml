@@ -1,0 +1,14 @@
+line-length = 100
+extend-exclude = ["comfy_nodes"]  # Copied ComfyUI nodes keep their original style.
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I"]
+
+[lint.per-file-ignores]
+# Scripts and tests put the project root on sys.path before importing the package.
+"tools/**" = ["E402"]
+"tests/**" = ["E402"]
+
+[format]
+quote-style = "single"

@@ -1,0 +1,331 @@
+#app-jobs {
+  --jobs-bg: #f5f7fb;
+  --jobs-panel: #fff;
+  --jobs-sidebar: #fbfcfe;
+  --jobs-input: #fff;
+  --jobs-button: #fff;
+  --jobs-pre: #f8f9fc;
+  --jobs-border: #e5eaf0;
+  --jobs-text: #243044;
+  --jobs-muted: #8993a4;
+  --jobs-accent: #695ee8;
+  display: grid;
+  grid-template-columns: minmax(260px, 315px) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  min-height: 100vh;
+  color: var(--jobs-text);
+  background: var(--jobs-bg);
+  font:
+    14px/1.5 system-ui,
+    -apple-system,
+    sans-serif;
+}
+#app-jobs * {
+  box-sizing: border-box;
+}
+#app-jobs .jobs-header {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--jobs-border);
+}
+#app-jobs h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+#app-jobs h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.15rem;
+}
+#app-jobs h3 {
+  margin: 0.9rem 0 0.4rem;
+  font-size: 1rem;
+}
+#app-jobs .jobs-aside {
+  border-right: 1px solid var(--jobs-border);
+  background: var(--jobs-sidebar);
+  padding: 1rem;
+  max-height: calc(100vh - 68px);
+  overflow: auto;
+}
+#app-jobs .jobs-main {
+  padding: 1.4rem;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+#app-jobs .jobs-card {
+  border: 1px solid var(--jobs-border);
+  background: var(--jobs-panel);
+  border-radius: 10px;
+  padding: 1rem;
+  min-width: 0;
+}
+#app-jobs .jobs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+#app-jobs .jobs-field small,
+#app-jobs .jobs-note,
+#app-jobs .jobs-empty {
+  color: var(--jobs-muted);
+  font-weight: 400;
+}
+#app-jobs input:not([type='checkbox']),
+#app-jobs select,
+#app-jobs textarea {
+  background: var(--jobs-input);
+  color: var(--jobs-text);
+  border: 1px solid var(--jobs-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+}
+#app-jobs textarea {
+  resize: vertical;
+}
+#app-jobs button {
+  border: 1px solid var(--jobs-border);
+  background: var(--jobs-button);
+  color: var(--jobs-text);
+  border-radius: 6px;
+  padding: 0.48rem 0.7rem;
+  cursor: pointer;
+  font: inherit;
+}
+#app-jobs button:hover {
+  border-color: var(--jobs-accent);
+}
+#app-jobs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+#app-jobs button:focus-visible,
+#app-jobs input:focus-visible,
+#app-jobs select:focus-visible,
+#app-jobs textarea:focus-visible,
+#app-jobs summary:focus-visible {
+  outline: 2px solid var(--jobs-accent);
+  outline-offset: 2px;
+}
+#app-jobs .jobs-muted {
+  background: transparent;
+}
+#app-jobs .jobs-primary {
+  background: #6c5ee7;
+  border-color: #6c5ee7;
+  color: #fff;
+  font-weight: 700;
+}
+#app-jobs .jobs-danger {
+  color: #c84a59;
+  border-color: #efc9cf;
+  background: #fff6f7;
+}
+#app-jobs .jobs-tree {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.8rem;
+}
+#app-jobs .jobs-branch {
+  border-top: 1px solid var(--jobs-border);
+  padding: 0.35rem 0;
+}
+#app-jobs .jobs-branch summary {
+  cursor: pointer;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#app-jobs .jobs-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.35rem 0.15rem;
+  cursor: pointer;
+}
+#app-jobs .jobs-check input {
+  margin-top: 0.3rem;
+  flex: none;
+}
+#app-jobs .jobs-check span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#app-jobs .jobs-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+#app-jobs .jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 1rem;
+}
+#app-jobs .jobs-expressions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 0.6rem;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--jobs-border);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+#app-jobs .jobs-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.4rem;
+}
+#app-jobs .jobs-checks .jobs-check {
+  max-width: 100%;
+}
+#app-jobs .jobs-piece-group {
+  border-top: 1px solid var(--jobs-border);
+  margin-top: 0.4rem;
+}
+#app-jobs .jobs-row .jobs-note {
+  margin: 0.3rem 0;
+}
+#app-jobs .jobs-lora {
+  border-top: 1px solid var(--jobs-border);
+  padding-top: 0.65rem;
+}
+#app-jobs .jobs-overrides summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+#app-jobs .jobs-override {
+  border-top: 1px solid var(--jobs-border);
+  padding: 0.3rem 0;
+}
+#app-jobs pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--jobs-pre);
+  border-radius: 6px;
+  padding: 0.8rem;
+  max-height: 300px;
+  overflow: auto;
+  margin: 0.2rem 0;
+}
+#app-jobs .jobs-status {
+  margin: 0;
+  min-height: 1.2rem;
+  color: #188759;
+}
+#app-jobs .jobs-status.error,
+#app-jobs .jobs-error {
+  color: #b84f65;
+}
+#app-jobs .jobs-summary p {
+  margin: 0.25rem 0;
+}
+#app-jobs .jobs-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  /* Stays in view so the image count is visible while ticking pieces. */
+  position: sticky;
+  bottom: 0.6rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+}
+#app-jobs .jobs-scope {
+  flex: none;
+  align-self: center;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--jobs-border);
+  color: var(--jobs-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+#app-jobs .jobs-scope-work {
+  border-color: #6aa9d8;
+  color: #2f6f9f;
+}
+#app-jobs .jobs-scope-character {
+  border-color: #b5aff4;
+  color: #5a4fd0;
+}
+#app-jobs .jobs-family-sdxl {
+  border-color: #e0a95b;
+  color: #9a5d0d;
+}
+#app-jobs .jobs-family-shared {
+  border-color: #7cc49b;
+  color: #23784a;
+}
+#app-jobs .jobs-formula {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#app-jobs .jobs-breakdown {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--jobs-muted);
+}
+#app-jobs .jobs-sub {
+  border-top: 1px solid var(--jobs-border);
+  margin-top: 0.6rem;
+}
+#app-jobs .jobs-aside .jobs-row {
+  margin-bottom: 0.4rem;
+}
+@media (max-width: 780px) {
+  #app-jobs {
+    display: block;
+  }
+  #app-jobs .jobs-aside {
+    border-right: 0;
+    border-bottom: 1px solid var(--jobs-border);
+    max-height: 45vh;
+  }
+  #app-jobs .jobs-main {
+    padding: 1rem;
+  }
+}
+:root[data-theme='dark'] #app-jobs {
+  --jobs-bg: #141b27;
+  --jobs-panel: #1b2533;
+  --jobs-sidebar: #19212e;
+  --jobs-input: #101722;
+  --jobs-button: #263446;
+  --jobs-pre: #101722;
+  --jobs-border: #344054;
+  --jobs-text: #e5e9f0;
+  --jobs-muted: #aab4c3;
+  --jobs-accent: #70b4ff;
+}
+:root[data-theme='dark'] #app-jobs .jobs-primary {
+  background: #245c91;
+  border-color: #397db9;
+}
+:root[data-theme='dark'] #app-jobs .jobs-danger {
+  color: #ffb5b5;
+  border-color: #8b4343;
+  background: #4a292e;
+}
+:root[data-theme='dark'] #app-jobs .jobs-status {
+  color: #a8dbad;
+}
+:root[data-theme='dark'] #app-jobs .jobs-status.error,
+:root[data-theme='dark'] #app-jobs .jobs-error {
+  color: #ffafaf;
+}

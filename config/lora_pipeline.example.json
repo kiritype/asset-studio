@@ -1,0 +1,17 @@
+{
+  "trainer_dir": "vendor/anima_lora",
+  "trainer_python": ".venv/Scripts/python.exe",
+  "lora_dir": "<ComfyUI LoRA folder, e.g. C:/StabilityMatrix/Models/Lora/anima>",
+  "bases": {
+    "official": {
+      "dit": "<anima-base-v1.0.safetensors>",
+      "text_encoder": "<qwen_3_06b_base.safetensors>",
+      "vae": "<qwen_image_vae.safetensors>"
+    },
+    "generation": {
+      "dit": "<optional: the Anima fine-tune you generate with>",
+      "text_encoder": "<its text encoder>",
+      "vae": "<qwen_image_vae.safetensors>"
+    }
+  }
+}

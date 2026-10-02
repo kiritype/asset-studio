@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // Theme before the first paint; the server setting replaces it once loaded.
+    (() => {
+      let theme = 'system';
+      try { theme = localStorage.getItem('asset-studio-theme') || 'system'; } catch {}
+      const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    })();
+  </script>
+  <title>Asset Studio</title>
+  <link rel="stylesheet" href="/css/studio.css">
+  <link rel="stylesheet" href="/css/prompts.css">
+  <link rel="stylesheet" href="/css/jobs.css">
+  <link rel="stylesheet" href="/css/gallery.css">
+  <link rel="stylesheet" href="/css/settings.css">
+  <link rel="stylesheet" href="/css/lab.css">
+  <link rel="stylesheet" href="/css/tools.css">
+  <link rel="stylesheet" href="/css/lora.css">
+  <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+  <header class="studio-header">
+    <a class="studio-brand" href="/jobs" data-route>
+      <span class="brand-icon">✦</span>
+      <span>Asset Studio<small>LOCAL IMAGE WORKSPACE</small></span>
+    </a>
+    <nav aria-label="주 메뉴" data-i18n-label="주 메뉴">
+      <a href="/prompts" data-route data-i18n="프롬프트 수정">프롬프트 수정</a>
+      <a href="/jobs" data-route data-i18n="작업">작업</a>
+      <a href="/lab" data-route data-i18n="실험실">실험실</a>
+      <a href="/tools" data-route data-i18n="이미지 도구">이미지 도구</a>
+      <a href="/lora" data-route>LoRA</a>
+      <a href="/gallery" data-route data-i18n="갤러리">갤러리</a>
+      <a href="/settings" data-route data-i18n="설정">설정</a>
+    </nav>
+    <div class="studio-global">
+      <button id="runtime-status" type="button" title="ComfyUI 연결 상태" data-i18n-title="ComfyUI 연결 상태">
+        <span class="runtime-dot"></span><span id="runtime-label" data-i18n="연결 확인 중">연결 확인 중</span>
+      </button>
+      <button id="queue-open" type="button"><span data-i18n="큐">큐</span> <span id="global-queue-count">—</span></button>
+    </div>
+  </header>
+
+  <div id="preview-banner" class="preview-banner" hidden data-i18n="미리보기 · 복사된 라이브러리로 확인하는 화면입니다. 실제 생성 큐와 ComfyUI 실행 제어는 사용할 수 없습니다.">
+    미리보기 · 복사된 라이브러리로 확인하는 화면입니다. 실제 생성 큐와 ComfyUI 실행 제어는 사용할 수 없습니다.
+  </div>
+  <div id="studio-toast" role="status" aria-live="polite" hidden></div>
+  <main id="studio-content"></main>
+
+  <dialog id="queue-drawer" aria-labelledby="queue-title">
+    <header>
+      <div>
+        <small>GENERATION QUEUE</small>
+        <h2 id="queue-title" data-i18n="작업 대기열">작업 대기열</h2>
+      </div>
+      <button id="queue-close" type="button" aria-label="대기열 닫기" data-i18n-label="대기열 닫기">×</button>
+    </header>
+    <p id="queue-state"></p>
+    <div id="queue-actions" class="queue-actions"></div>
+    <div id="queue-rows"></div>
+  </dialog>
+</body>
+</html>
