@@ -13,6 +13,7 @@ from urllib.request import ProxyHandler, Request, build_opener
 
 from PIL import Image
 
+from ..i18n import message_of
 from ..util import settings_file
 
 
@@ -67,7 +68,7 @@ class LocalVLM:
                 if not config.get('loaded_marker'):
                     raise VLMError('loaded_marker is required to verify actual model residency')
         except Exception as exc:
-            self.error = str(exc)
+            self.error = message_of(exc)
             self.config = {'enabled': False}
 
     @property

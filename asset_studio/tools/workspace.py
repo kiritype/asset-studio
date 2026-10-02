@@ -14,6 +14,7 @@ from pathlib import Path, PurePosixPath
 
 from PIL import Image, ImageOps
 
+from ..i18n import Msg, message_of
 from ..util import atomic_json, now, state_file
 from . import censor
 from .metadata import describe
@@ -49,7 +50,9 @@ class ToolWorkspace:
         with self.lock:
             item = next((i for i in self.items if i['id'] == item_id), None)
         if item is None:
-            raise ValueError('이미지 도구 목록에 없는 이미지입니다.')
+            raise ValueError(
+                Msg('server.workspace.not_in_the_image_tools_list', 'Not in the image tools list.')
+            )
         return item
 
     def file(self, item):
@@ -63,24 +66,60 @@ class ToolWorkspace:
     def _check(raw, name):
         """Open and validate one image; returns (format, width, height)."""
         if len(raw) > MAX_FILE_BYTES:
-            raise ValueError(f'{name}: 파일이 너무 큽니다 (최대 100MB).')
+            raise ValueError(
+                Msg(
+                    'server.workspace.the_file_is_too_large_max',
+                    '{name}: the file is too large (max 100 MB).',
+                    name=name,
+                )
+            )
         try:
             with Image.open(io.BytesIO(raw)) as image:
                 if image.format not in FORMATS:
-                    raise ValueError(f'{name}: PNG, WebP, JPEG만 올릴 수 있습니다.')
+                    raise ValueError(
+                        Msg(
+                            'server.workspace.only_png_webp_and_jpeg_can',
+                            '{name}: only PNG, WebP and JPEG can be uploaded.',
+                            name=name,
+                        )
+                    )
                 if getattr(image, 'is_animated', False):
-                    raise ValueError(f'{name}: 움직이는 이미지는 지원하지 않습니다.')
+                    raise ValueError(
+                        Msg(
+                            'server.workspace.animated_images_are_not_supported',
+                            '{name}: animated images are not supported.',
+                            name=name,
+                        )
+                    )
                 if image.width * image.height > MAX_PIXELS:
-                    raise ValueError(f'{name}: 이미지가 너무 큽니다.')
+                    raise ValueError(
+                        Msg(
+                            'server.workspace.the_image_is_too_large',
+                            '{name}: the image is too large.',
+                            name=name,
+                        )
+                    )
                 image.verify()
                 return image.format, image.width, image.height
         except (OSError, SyntaxError, Image.DecompressionBombError) as error:
-            raise ValueError(f'{name}: 이미지로 읽을 수 없습니다.') from error
+            raise ValueError(
+                Msg(
+                    'server.workspace.cannot_be_read_as_an_image',
+                    '{name}: cannot be read as an image.',
+                    name=name,
+                )
+            ) from error
 
     def _add(self, record):
         with self.lock:
             if len(self.items) >= MAX_ITEMS:
-                raise ValueError(f'이미지 도구 목록은 {MAX_ITEMS}장까지입니다. 정리 후 추가하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.workspace.the_image_tools_list_holds_up',
+                        'The image tools list holds up to {max_items} images. Remove some first.',
+                        max_items=MAX_ITEMS,
+                    )
+                )
             self.items.append(record)
 
     def _store(self, name, raw):
@@ -111,12 +150,25 @@ class ToolWorkspace:
             try:
                 archive = zipfile.ZipFile(io.BytesIO(raw))
             except zipfile.BadZipFile as error:
-                raise ValueError('ZIP 파일을 열 수 없습니다.') from error
+                raise ValueError(
+                    Msg('server.workspace.cannot_open_the_zip_file', 'Cannot open the ZIP file.')
+                ) from error
             entries = [e for e in archive.infolist() if not e.is_dir()]
             if len(entries) > MAX_ZIP_FILES:
-                raise ValueError(f'ZIP 안 파일은 {MAX_ZIP_FILES}개까지입니다.')
+                raise ValueError(
+                    Msg(
+                        'server.workspace.a_zip_may_hold_up_to',
+                        'A ZIP may hold up to {max_zip_files} files.',
+                        max_zip_files=MAX_ZIP_FILES,
+                    )
+                )
             if sum(e.file_size for e in entries) > MAX_ZIP_BYTES:
-                raise ValueError('ZIP을 풀면 2GB를 넘습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.workspace.the_zip_unpacks_to_more_than',
+                        'The ZIP unpacks to more than 2 GB.',
+                    )
+                )
             for entry in entries:
                 # Names are only shown; files are stored under new ids, so paths cannot escape.
                 if PurePosixPath(entry.filename).suffix.lower() not in (
@@ -125,12 +177,17 @@ class ToolWorkspace:
                     '.jpg',
                     '.jpeg',
                 ):
-                    skipped.append({'name': entry.filename, 'error': '이미지가 아닙니다.'})
+                    skipped.append(
+                        {
+                            'name': entry.filename,
+                            'error': Msg('server.workspace.not_an_image', 'Not an image.'),
+                        }
+                    )
                     continue
                 try:
                     added.append(self._store(entry.filename, archive.read(entry)))
                 except ValueError as error:
-                    skipped.append({'name': entry.filename, 'error': str(error)})
+                    skipped.append({'name': entry.filename, 'error': message_of(error)})
         else:
             added.append(self._store(name, raw))
         with self.lock:
@@ -139,7 +196,12 @@ class ToolWorkspace:
 
     def add_gallery(self, paths):
         if not isinstance(paths, list) or not 1 <= len(paths) <= 500:
-            raise ValueError('갤러리 이미지를 1~500장 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.workspace.choose_1_to_500_gallery_images',
+                    'Choose 1 to 500 gallery images.',
+                )
+            )
         added = []
         with self.lock:
             known = {i['path'] for i in self.items if i['source'] == 'gallery'}
@@ -148,7 +210,13 @@ class ToolWorkspace:
                     continue
                 path = self.gallery._safe_path(relative)
                 if not path.is_file():
-                    raise ValueError(f'갤러리에 없는 이미지입니다: {relative}')
+                    raise ValueError(
+                        Msg(
+                            'server.workspace.not_in_the_gallery',
+                            'Not in the gallery: {relative}',
+                            relative=relative,
+                        )
+                    )
                 with Image.open(path) as image:
                     kind, width, height = image.format, image.width, image.height
                 record = dict(
@@ -206,7 +274,12 @@ class ToolWorkspace:
         """(item, name in a ZIP) for chosen images. Gallery images keep their folders."""
         wanted = [i for i in dict.fromkeys(ids or []) if i]
         if not 1 <= len(wanted) <= 500:
-            raise ValueError('내려받을 이미지를 1~500장 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.workspace.choose_1_to_500_images_to',
+                    'Choose 1 to 500 images to download.',
+                )
+            )
         result = []
         used = set()
         for item in [self.get(item_id) for item_id in wanted]:
@@ -254,7 +327,7 @@ class ToolWorkspace:
 
     def mask_path(self, item_id, kind='censor'):
         if kind not in self.MASK_KINDS:
-            raise ValueError('없는 마스크 종류입니다.')
+            raise ValueError(Msg('server.workspace.unknown_mask_type', 'Unknown mask type.'))
         suffix = self.MASK_KINDS[kind][0]
         return self.root / 'data' / 'tools' / 'masks' / f'{self.get(item_id)["id"]}{suffix}.png'
 
@@ -273,7 +346,14 @@ class ToolWorkspace:
         if isinstance(mask, (bytes, bytearray)):
             mask = censor.load_mask(bytes(mask), size)
         elif mask.size != size:
-            raise ValueError(f'마스크 크기 {mask.size}가 이미지 크기 {size}와 다릅니다.')
+            raise ValueError(
+                Msg(
+                    'server.workspace.the_mask_size_differs_from_the',
+                    'The mask size {size} differs from the image size {size2}.',
+                    size=mask.size,
+                    size2=size,
+                )
+            )
         path = self.mask_path(item_id, kind)
         path.parent.mkdir(parents=True, exist_ok=True)
         mask.convert('L').save(path, 'PNG')

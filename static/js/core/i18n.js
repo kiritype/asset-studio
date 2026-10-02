@@ -1,7 +1,8 @@
-// Interface translation. Keys are the Korean source text; static/i18n/<lang>.json maps
-// them to other languages. Placeholders are {0}, {1}… (positional) or {name}.
+// Interface translation. Every language, Korean included, has a catalog in
+// static/i18n/<lang>.json that maps keys such as `jobs.queue_n` to text. Placeholders are
+// {0}, {1}… (positional) or {name}. A missing text falls back to English, then to the key.
 // The language comes from the server setting (data/settings/ui.json); "auto" follows the
-// browser. This module loads its catalog with top-level await, so every module that
+// browser. This module loads its catalogs with top-level await, so every module that
 // imports it can translate at load time.
 
 export const LANGUAGES = ['ko', 'en', 'ja', 'zh-CN'];
@@ -19,13 +20,26 @@ function fromBrowser() {
 }
 
 async function configured() {
-  if (typeof document === 'undefined') return 'ko';
+  if (typeof document === 'undefined') return 'en';
   try {
     const response = await fetch('/api/settings');
     const settings = await response.json();
     return settings.ui?.values?.language || 'auto';
   } catch {
     return 'auto';
+  }
+}
+
+async function load(lang) {
+  if (typeof document === 'undefined') {
+    // Node tests: read the catalog next to the code instead of fetching it.
+    const {readFile} = await import('node:fs/promises');
+    return JSON.parse(await readFile(new URL(`../../i18n/${lang}.json`, import.meta.url), 'utf-8'));
+  }
+  try {
+    return await (await fetch(`/i18n/${lang}.json`)).json();
+  } catch {
+    return {};
   }
 }
 
@@ -36,35 +50,10 @@ export const locale = {ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', 'zh-CN': 'zh-CN'}[
 // Also loaded by node tests, which have no document and no server.
 if (typeof document !== 'undefined') document.documentElement.lang = language;
 
-let catalog = {};
-const patterns = [];
-if (language !== 'ko') {
-  try {
-    catalog = await (await fetch(`/i18n/${language}.json`)).json();
-  } catch {
-    catalog = {};
-  }
-  // Keys with placeholders also match messages that were built on the server.
-  for (const [key, value] of Object.entries(catalog)) {
-    if (!/\{\w+\}/.test(key)) continue;
-    const names = [];
-    const source = key
-      .split(/(\{\w+\})/)
-      .map((part) => {
-        const match = part.match(/^\{(\w+)\}$/);
-        if (match) {
-          names.push(match[1]);
-          return '([\\s\\S]+?)';
-        }
-        return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      })
-      .join('');
-    const fixed = key.replace(/\{\w+\}/g, '').length;
-    patterns.push({regex: new RegExp(`^${source}$`), names, value, fixed});
-  }
-  // The pattern with the most fixed text wins when several match.
-  patterns.sort((a, b) => b.fixed - a.fixed);
-}
+const [catalog, fallback] = await Promise.all([
+  load(language),
+  language === 'en' ? Promise.resolve({}) : load('en'),
+]);
 
 function fill(text, params) {
   if (params == null) return text;
@@ -76,28 +65,25 @@ function fill(text, params) {
 /** Translate ``key``; ``params`` is an array for {0}… or an object for {name}. */
 export function t(key, params) {
   if (typeof key !== 'string') return key;
-  const text = language === 'ko' ? key : (catalog[key] ?? key);
-  return fill(text, params);
+  return fill(catalog[key] ?? fallback[key] ?? key, params);
 }
 
 /**
- * Translate text that came from the server (errors, labels) and may already contain
- * filled-in values: exact keys first, then keys with placeholders.
+ * Show something that came from the server. Messages arrive as
+ * ``{i18n: key, params, text}`` (``text`` is the English original); plain strings, such as
+ * names people typed or records from older versions, are shown as they are.
  */
-export function tr(text) {
-  if (typeof text !== 'string' || language === 'ko' || !/[가-힣]/.test(text)) return text;
-  if (catalog[text] !== undefined) return catalog[text];
-  for (const {regex, names, value} of patterns) {
-    const match = text.match(regex);
-    if (match) {
-      const params = Object.fromEntries(names.map((name, index) => [name, tr(match[index + 1])]));
-      return fill(value, params);
-    }
-  }
-  return text;
+export function tr(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (typeof value.i18n !== 'string') return value.text ?? '';
+  const params = Object.fromEntries(
+    Object.entries(value.params || {}).map(([name, part]) => [name, tr(part)]),
+  );
+  const text = catalog[value.i18n] ?? fallback[value.i18n];
+  return text === undefined ? (value.text ?? value.i18n) : fill(text, params);
 }
 
-/** Fill elements marked with data-i18n (text) / data-i18n-title / data-i18n-label. */
+/** Text for elements marked with data-i18n, data-i18n-title and data-i18n-label. */
 export function translatePage(root = document) {
   for (const node of root.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
   for (const node of root.querySelectorAll('[data-i18n-title]'))

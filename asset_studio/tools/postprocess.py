@@ -21,6 +21,7 @@ from PIL import Image, ImageChops, ImageOps, PngImagePlugin
 
 from ..gallery.listing import is_asset_path
 from ..generation.workflow import build_workflow, validate_settings
+from ..i18n import Msg
 from ..util import atomic_json, now, replace_file
 from . import censor
 
@@ -31,11 +32,11 @@ NSFW_MODEL = 'ntd11_anime_nsfw_segm_v5-variant1.pt'
 # Labels the censor detector knows (same list as the node's REFERENCE_LABELS).
 NSFW_LABELS = ('nipples', 'pussy', 'penis', 'anus', 'testicles', 'x-ray', 'cross-section')
 OPS = {
-    'alpha': '배경 분리 (마스크)',
-    'detect': '가림 부위 검출',
-    'upscale': '업스케일',
-    'detail': '디테일러 (실험)',
-    'inpaint': '인페인트',
+    'alpha': Msg('server.postprocess.background_split_mask', 'Background split (mask)'),
+    'detect': Msg('server.postprocess.censor_area_detection', 'Censor area detection'),
+    'upscale': Msg('server.postprocess.upscale', 'Upscale'),
+    'detail': Msg('server.postprocess.detailer_experimental', 'Detailer (experimental)'),
+    'inpaint': Msg('server.postprocess.inpaint', 'Inpaint'),
 }
 DETAIL_STAGES = ('face', 'eye', 'mouth', 'hand')
 DETECTORS = {
@@ -50,7 +51,15 @@ SAM_MODEL = 'sam_vit_b_01ec64.pth'
 def _number(options, key, default, low, high, kind=float):
     value = options.get(key, default)
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
-        raise ValueError(f'{key} 값은 {low}~{high} 사이여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.postprocess.must_be_between_and',
+                '{key} must be between {low} and {high}.',
+                key=key,
+                low=low,
+                high=high,
+            )
+        )
     return kind(value)
 
 
@@ -60,14 +69,25 @@ def check_options(op, options, info):
     if op == 'alpha':
         method = options.get('method', 'isnet')
         if method not in ('isnet', 'person'):
-            raise ValueError('배경 투명화 방식을 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.choose_a_background_removal_method',
+                    'Choose a background removal method.',
+                )
+            )
         return {'method': method, 'confidence': _number(options, 'confidence', 0.35, 0, 1)}
     if op == 'detect':
         labels = options.get('labels') or list(NSFW_LABELS)
         if isinstance(labels, str):
             labels = [label.strip() for label in labels.split(',') if label.strip()]
         if not labels or any(label not in NSFW_LABELS for label in labels):
-            raise ValueError('가릴 부위를 목록에서 고르세요: ' + ', '.join(NSFW_LABELS))
+            raise ValueError(
+                Msg(
+                    'server.postprocess.choose_areas_to_cover_from',
+                    'Choose areas to cover from: {nsfw_labels}',
+                    nsfw_labels=', '.join(NSFW_LABELS),
+                )
+            )
         return {
             'confidence': _number(options, 'confidence', 0.35, 0, 1),
             'labels': ','.join(labels),
@@ -75,12 +95,22 @@ def check_options(op, options, info):
     if op == 'upscale':
         model = options.get('model') or next(iter(info['upscale_models']), '')
         if model not in info['upscale_models']:
-            raise ValueError('업스케일 모델을 목록에서 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.choose_an_upscale_model_from_the',
+                    'Choose an upscale model from the list.',
+                )
+            )
         return {'model': model, 'scale': _number(options, 'scale', 2, 0.25, 8)}
     if op == 'detail':
         stages = {stage: bool(options.get(stage, stage != 'mouth')) for stage in DETAIL_STAGES}
         if not any(stages.values()):
-            raise ValueError('다시 그릴 부위를 하나 이상 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.choose_at_least_one_area_to',
+                    'Choose at least one area to redraw.',
+                )
+            )
         return {
             **stages,
             'denoise': _number(options, 'denoise', 0.4, 0.05, 1),
@@ -91,7 +121,13 @@ def check_options(op, options, info):
         for key in ('positive', 'negative'):
             value = options.get(key, '')
             if not isinstance(value, str) or len(value) > 8000:
-                raise ValueError(f'{key} 프롬프트는 8000자 이하 글자여야 합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.postprocess.the_prompt_must_be_text_of',
+                        'The {key} prompt must be text of 8000 characters or fewer.',
+                        key=key,
+                    )
+                )
             prompts[key] = value.strip()
         return {
             **prompts,
@@ -104,13 +140,20 @@ def check_options(op, options, info):
             'area': _choice(options, 'area', ('crop', 'full')),
             'padding': _number(options, 'padding', 64, 0, 512, int),
         }
-    raise ValueError('없는 후처리입니다.')
+    raise ValueError(Msg('server.postprocess.unknown_post_process', 'Unknown post-process.'))
 
 
 def _choice(options, key, allowed):
     value = options.get(key, allowed[0])
     if value not in allowed:
-        raise ValueError(f'{key} 값은 {", ".join(allowed)} 중 하나여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.postprocess.must_be_one_of',
+                '{key} must be one of {allowed}.',
+                key=key,
+                allowed=', '.join(allowed),
+            )
+        )
     return value
 
 
@@ -185,7 +228,10 @@ def inpaint_graph(image_name, mask_name, options, source):
     drop |= {k for k, n in built.items() if n['class_type'] in ('SaveImage', 'PreviewImage')}
     nodes = {k: v for k, v in built.items() if k not in drop}
     nodes['image'] = {'class_type': 'LoadImage', 'inputs': {'image': image_name}}
-    nodes['mask'] = {'class_type': 'LoadImageMask', 'inputs': {'image': mask_name, 'channel': 'red'}}
+    nodes['mask'] = {
+        'class_type': 'LoadImageMask',
+        'inputs': {'image': mask_name, 'channel': 'red'},
+    }
     nodes['encode'] = {'class_type': 'VAEEncode', 'inputs': {'pixels': ['image', 0], 'vae': vae}}
     nodes['noise_mask'] = {
         'class_type': 'SetLatentNoiseMask',
@@ -273,14 +319,23 @@ class PostprocessMixin:
         try:
             info = self.comfy.request('/object_info')
         except Exception as error:
-            return {'available': False, 'error': f'ComfyUI에 연결할 수 없습니다: {error}'}
+            return {
+                'available': False,
+                'error': Msg(
+                    'server.postprocess.cannot_connect_to_comfyui',
+                    'Cannot connect to ComfyUI: {error}',
+                    error=error,
+                ),
+            }
         prefix = next((p for p in PREFIXES if f'{p}Upscale' in info), None)
         if prefix is None:
             return {
                 'available': False,
-                'error': 'Asset Studio 후처리 노드가 ComfyUI에 없습니다. '
-                'comfy_nodes/asset_studio_nodes를 custom_nodes에 연결하고 '
-                'ComfyUI를 다시 시작하세요.',
+                'error': Msg(
+                    'server.postprocess.asset_studio_post_processing_nodes_are',
+                    'Asset Studio post-processing nodes are not in ComfyUI. Link '
+                    'comfy_nodes/asset_studio_nodes into custom_nodes and restart ComfyUI.',
+                ),
             }
         loader = info.get('UpscaleModelLoader', {}).get('input', {}).get('required', {})
         models = (loader.get('model_name') or [[]])[0]
@@ -300,16 +355,31 @@ class PostprocessMixin:
     def enqueue_postprocess(self, body):
         ids = body.get('ids')
         if not isinstance(ids, list) or not 1 <= len(ids) <= 200:
-            raise ValueError('처리할 이미지를 1~200장 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.choose_1_to_200_images_to',
+                    'Choose 1 to 200 images to process.',
+                )
+            )
         op = body.get('op')
         info = self.postprocess_info()
         if not info['available']:
             raise ValueError(info['error'])
         if op not in info['ops']:
-            raise ValueError('없는 후처리이거나 ComfyUI에 필요한 노드가 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.unknown_post_process_or_comfyui_lacks',
+                    'Unknown post-process, or ComfyUI lacks the nodes it needs.',
+                )
+            )
         if op == 'alpha' and body.get('options', {}).get('method', 'isnet') == 'isnet':
             if not info['rembg']:
-                raise ValueError('isnet-anime 배경 제거 노드(ComfyUI_essentials)가 없습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.postprocess.the_isnet_anime_background_removal_node',
+                        'The isnet-anime background removal node (ComfyUI_essentials) is missing.',
+                    )
+                )
         options = check_options(op, body.get('options'), info)
         items = [self.tools.get(i) for i in ids]
         sources = {}
@@ -332,18 +402,29 @@ class PostprocessMixin:
             if missing:
                 if op == 'detail':
                     raise ValueError(
-                        'Asset Studio 제작 기록이 없는 이미지는 디테일러를 쓸 수 없습니다: '
-                        + ', '.join(missing[:5])
+                        Msg(
+                            'server.postprocess.the_detailer_needs_images_made_with',
+                            'The detailer needs images made with Asset Studio (with a record): '
+                            '{missing}',
+                            missing=', '.join(missing[:5]),
+                        )
                     )
                 raise ValueError(
-                    'Asset Studio 제작 기록이 없는 이미지는 인페인트를 쓸 수 없습니다: '
-                    + ', '.join(missing[:5])
+                    Msg(
+                        'server.postprocess.inpaint_needs_images_made_with_asset',
+                        'Inpaint needs images made with Asset Studio (with a record): {missing}',
+                        missing=', '.join(missing[:5]),
+                    )
                 )
         if op == 'inpaint':
             unmasked = [item['name'] for item in items if not item.get('inpaint_mask')]
             if unmasked:
                 raise ValueError(
-                    '다시 그릴 부분 마스크를 먼저 저장하세요: ' + ', '.join(unmasked[:5])
+                    Msg(
+                        'server.postprocess.save_a_mask_of_the_area',
+                        'Save a mask of the area to redraw first: {unmasked}',
+                        unmasked=', '.join(unmasked[:5]),
+                    )
                 )
         prepared = [
             dict(
@@ -365,7 +446,12 @@ class PostprocessMixin:
         ]
         with self.lock:
             if sum(j['status'] == 'queued' for j in self.jobs) + len(prepared) > 5000:
-                raise ValueError('대기 작업이 너무 많습니다. 기존 작업을 먼저 처리하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.postprocess.too_many_queued_jobs_let_the',
+                        'Too many queued jobs. Let the queue run first.',
+                    )
+                )
             self.jobs.extend(prepared)
             self.persist()
         public = [{k: v for k, v in j.items() if k != 'snapshot'} for j in prepared]
@@ -390,7 +476,12 @@ class PostprocessMixin:
             if options.get('area') == 'crop':
                 box = mask.getbbox()
                 if box is None:
-                    raise ValueError('다시 그릴 부분 마스크가 비어 있습니다.')
+                    raise ValueError(
+                        Msg(
+                            'server.postprocess.the_mask_of_the_area_to',
+                            'The mask of the area to redraw is empty.',
+                        )
+                    )
                 settings = job['post_source']['settings']
                 region, size = crop_region(
                     box, mask.size, options['padding'], settings['width'] * settings['height']
@@ -409,7 +500,12 @@ class PostprocessMixin:
     def _inpaint_mask(self, item, options):
         mask = self.tools.mask(item['id'], 'inpaint')
         if mask is None:
-            raise ValueError('다시 그릴 부분 마스크가 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.there_is_no_mask_for_the',
+                    'There is no mask for the area to redraw.',
+                )
+            )
         return censor.shape_mask(
             mask.point(lambda v: 255 if v >= 128 else 0), options['grow'], options['feather']
         )
@@ -463,7 +559,12 @@ class PostprocessMixin:
         }
         mask = self.tools.mask(item['id'])
         if mask is None:
-            raise ValueError('마스크가 없습니다. 부위를 검출하거나 브러시로 칠한 뒤 저장하세요.')
+            raise ValueError(
+                Msg(
+                    'server.postprocess.no_mask_detect_areas_or_paint',
+                    'No mask. Detect areas or paint with the brush, then save.',
+                )
+            )
         with Image.open(self.tools.file(item)) as source:
             source.load()
             result = censor.apply(source, mask, **options)
@@ -481,7 +582,11 @@ class PostprocessMixin:
         mask = self.tools.mask(item['id'], 'alpha')
         if mask is None:
             raise ValueError(
-                '남길 부분 마스크가 없습니다. 배경을 분리하거나 브러시로 칠한 뒤 저장하세요.'
+                Msg(
+                    'server.postprocess.there_is_no_keep_mask_split',
+                    'There is no keep mask. Split the background or paint with the brush, then '
+                    'save.',
+                )
             )
         mask = censor.shape_mask(mask.point(lambda v: 255 if v >= 128 else 0), **options)
         with Image.open(self.tools.file(item)) as source:

@@ -21,7 +21,7 @@ The interface supports Korean, English, Japanese and Simplified Chinese. The Jap
 Chinese texts are machine translations and read awkwardly in places; corrections are
 welcome.
 
-- Interface: `static/i18n/<language>.json` (keys are the Korean source text)
+- Interface: `static/i18n/<language>.json` (`ko.json`, `en.json`, `ja.json`, `zh-CN.json`)
 - README: `README.ja.md`, `README.zh-CN.md`
 - Web manual: `manual/<language>/`
 
@@ -109,8 +109,9 @@ util.py            Shared helpers such as atomic writes
   `util.replace_file`.
 - Raise `ValueError` for invalid input and `ConflictError` for concurrent edits; the HTTP
   layer turns them into 400 and 409.
-- Error messages the server returns are written in Korean source text and translated (see
-  "Interface text").
+- Server text the page shows (errors, states, labels) is made with
+  `Msg('server.<module>.<name>', 'English text', value=...)`. It is an English string inside the
+  server and reaches the page as a translation key (see "Interface text").
 
 ## Interface (JavaScript / CSS)
 
@@ -127,17 +128,23 @@ util.py            Shared helpers such as atomic writes
 
 ### Interface text
 
-- Wrap the Korean source text in `t('...')`; show text that came from the server with
-  `tr(...)`.
-- Add the English, Japanese and Chinese translations with every new string:
+- No Korean (or any language) in code. Interface text is a key: `t('<screen>.<name>')`, for
+  example `t('jobs.queue_n', [count])`; text used on several screens has a `common.` key.
+- Show text that came from the server with `tr(...)`. Server messages arrive as
+  `{i18n, params, text}` objects; plain strings such as names people typed are shown as they
+  are.
+- Every new key needs all four languages (`ko`, `en`, `ja`, `zh-CN`). A missing translation
+  falls back to English, then to the key itself.
 
   ```bat
   python tools\i18n_check.py
   python tools\i18n_add.py entries.json
   ```
 
-  `entries.json` looks like `{"한국어 원문": ["English", "日本語", "简体中文"]}`. Tests fail
-  when a translation is missing.
+  `entries.json` looks like `{"jobs.queue_n": {"ko": "…", "en": "…", "ja": "…", "zh-CN": "…"}}`.
+  For server keys, `en` must equal the English written in `Msg()`. Tests fail when a
+  translation is missing, when placeholders (`{0}`, `{name}`) differ between languages, or
+  when Korean is left in the code.
 
 ## Data
 

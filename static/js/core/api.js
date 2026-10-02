@@ -10,18 +10,18 @@ export async function api(path, body) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new Error(t('Asset Studio 서버에 연결할 수 없습니다.'));
+    throw new Error(t('app.cannot_connect_to_the_asset_studio'));
   }
 
   let data;
   try {
     data = await response.json();
   } catch {
-    throw new Error(t('서버 응답을 읽지 못했습니다.'));
+    throw new Error(t('app.could_not_read_the_server_response'));
   }
 
   if (!response.ok || data.ok === false) {
-    const error = new Error(tr(data.error) || t('요청 실패 ({0})', [response.status]));
+    const error = new Error(tr(data.error) || t('app.request_failed', [response.status]));
     error.status = response.status;
     error.data = data;
     throw error;

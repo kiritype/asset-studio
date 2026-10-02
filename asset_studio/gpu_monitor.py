@@ -12,6 +12,7 @@ import subprocess
 import threading
 import time
 
+from .i18n import Msg
 from .util import settings_file
 
 DEFAULTS = {
@@ -93,10 +94,19 @@ class GpuMonitor:
         vram, programs = self._sample()
         watched = [name for name in settings['watch_processes'] if name.lower() in programs]
         if watched:
-            return f'GPU를 쓰는 프로그램이 실행 중입니다: {", ".join(watched)}'
+            return Msg(
+                'server.gpu_monitor.a_program_using_the_gpu_is',
+                'A program using the GPU is running: {watched}',
+                watched=', '.join(watched),
+            )
         need = settings['min_free_vram_mb'].get(kind, 0)
         if vram and vram[0] < need:
-            return f'남은 GPU 메모리 {vram[0]:,}MB가 필요한 {need:,}MB보다 적습니다.'
+            return Msg(
+                'server.gpu_monitor.not_enough_free_vram',
+                'Free GPU memory is {free} MB, less than the {need} MB needed.',
+                free=f'{vram[0]:,}',
+                need=f'{need:,}',
+            )
         return None
 
     def snapshot(self):

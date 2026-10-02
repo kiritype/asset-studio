@@ -6,6 +6,7 @@ import secrets
 import uuid
 
 from ..compose import compose
+from ..i18n import Msg
 from ..library.service import ConflictError
 from ..lora.apply import merge_loras
 from ..util import atomic_json, code, now
@@ -40,12 +41,21 @@ class JobQueueMixin:
             raise ValueError('execution_group must be a short identifier')
         refs = request.get('expressions', [])
         if not isinstance(refs, list) or not 1 <= len(refs) <= 500:
-            raise ValueError('감정·동작을 1~500개 선택하세요.')
+            raise ValueError(
+                Msg('server.queue.select_1_to_500_expressions', 'Select 1 to 500 expressions.')
+            )
         count = request.get('count', 1)
         if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 50:
-            raise ValueError('생성 수는 1~50 사이의 정수여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.queue.the_count_must_be_a_whole',
+                    'The count must be a whole number from 1 to 50.',
+                )
+            )
         if len(refs) * count > 3000:
-            raise ValueError('한 번에 3,000장까지 요청할 수 있습니다.')
+            raise ValueError(
+                Msg('server.queue.up_to_3_000_images_per', 'Up to 3,000 images per request.')
+            )
         catalog = _catalog or self.comfy.catalog()
         if not catalog['connected']:
             raise ValueError(catalog['error'])
@@ -66,7 +76,11 @@ class JobQueueMixin:
                     ]
                     if missing:
                         raise ValueError(
-                            '자동 LoRA 파일이 ComfyUI에 없습니다: ' + ', '.join(missing)
+                            Msg(
+                                'server.queue.automatic_lora_files_are_missing_in',
+                                'Automatic LoRA files are missing in ComfyUI: {missing}',
+                                missing=', '.join(missing),
+                            )
                         )
                 snapshot = copy.deepcopy({**snap, 'settings': actual})
                 prepared.append(
@@ -91,7 +105,12 @@ class JobQueueMixin:
             return prepared
         with self.lock:
             if sum(j['status'] == 'queued' for j in self.jobs) + len(prepared) > 5000:
-                raise ValueError('대기 작업이 너무 많습니다. 기존 작업을 먼저 처리하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.queue.too_many_queued_jobs_let_the',
+                        'Too many queued jobs. Let the queue run first.',
+                    )
+                )
             for job in prepared:
                 job['review_requested'] = bool(self.validation.settings['enabled'])
             self.jobs.extend(prepared)
@@ -105,7 +124,9 @@ class JobQueueMixin:
     def enqueue_batch(self, body):
         requests = body.get('requests')
         if not isinstance(requests, list) or not 1 <= len(requests) <= 500:
-            raise ValueError('생성 대상을 1~500개 선택하세요.')
+            raise ValueError(
+                Msg('server.queue.select_1_to_500_targets', 'Select 1 to 500 targets.')
+            )
         catalog = self.comfy.catalog()
         prepared = []
         batch_id = uuid.uuid4().hex
@@ -115,7 +136,10 @@ class JobQueueMixin:
                 and body['library_revision'] != self.library.version()['revision']
             ):
                 raise ConflictError(
-                    '라이브러리가 변경되었습니다. 최신 프롬프트를 확인한 후 등록하세요.'
+                    Msg(
+                        'server.queue.the_library_changed_check_the_latest',
+                        'The library changed. Check the latest prompts before queueing.',
+                    )
                 )
             work_catalogs = {}
             for request in requests:
@@ -131,9 +155,14 @@ class JobQueueMixin:
                     )
                 )
                 if len(prepared) > 3000:
-                    raise ValueError('한 번에 최대 3,000장까지 등록할 수 있습니다.')
+                    raise ValueError(
+                        Msg(
+                            'server.queue.up_to_3_000_images_can',
+                            'Up to 3,000 images can be queued at once.',
+                        )
+                    )
             if sum(j['status'] == 'queued' for j in self.jobs) + len(prepared) > 5000:
-                raise ValueError('대기 작업이 너무 많습니다.')
+                raise ValueError(Msg('server.queue.too_many_queued_jobs', 'Too many queued jobs.'))
             for job in prepared:
                 job['review_requested'] = bool(self.validation.settings['enabled'])
                 job['batch_id'] = batch_id
@@ -180,10 +209,14 @@ class JobQueueMixin:
             if job_id is not None:
                 job = next((j for j in self.jobs if j['id'] == job_id), None)
                 if job is None:
-                    raise ValueError('작업을 찾을 수 없습니다.')
+                    raise ValueError(Msg('server.queue.job_not_found', 'Job not found.'))
                 if job['status'] not in finished:
                     raise ValueError(
-                        '종료된 작업만 지울 수 있습니다. 진행·대기 작업은 먼저 취소하세요.'
+                        Msg(
+                            'server.queue.only_finished_jobs_can_be_cleared',
+                            'Only finished jobs can be cleared. Cancel running or queued ones '
+                            'first.',
+                        )
                     )
             removed = [
                 j
@@ -212,7 +245,12 @@ class JobQueueMixin:
         with self.lock:
             old = next(j for j in self.jobs if j['id'] == job_id)
             if old['status'] not in ('failed', 'cancelled', 'interrupted'):
-                raise ValueError('실패·취소·중단된 작업만 재시도할 수 있습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.queue.only_failed_cancelled_or_interrupted_jobs',
+                        'Only failed, cancelled or interrupted jobs can be retried.',
+                    )
+                )
             job = {
                 k: copy.deepcopy(v)
                 for k, v in old.items()

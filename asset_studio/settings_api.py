@@ -9,6 +9,7 @@ import copy
 import json
 from pathlib import Path
 
+from .i18n import Msg
 from .lora.trainer import DEFAULT_SETTINGS as LORA_DEFAULTS
 from .lora.trainer_setup import BASES, MODEL_KEYS
 from .tags import TagLookup, data_dir
@@ -24,13 +25,23 @@ def _text(value, name, allow_empty=True):
     if value is None:
         value = ''
     if not isinstance(value, str) or len(value) > MAX_TEXT or (not allow_empty and not value):
-        raise ValueError(f'{name}: 문자열을 확인하세요.')
+        raise ValueError(
+            Msg('server.settings_api.check_the_text', '{name}: check the text.', name=name)
+        )
     return value.strip()
 
 
 def _integer(value, name, low, high):
     if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
-        raise ValueError(f'{name}: {low}~{high} 사이의 정수여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.settings_api.must_be_a_whole_number_from',
+                '{name}: must be a whole number from {low} to {high}.',
+                name=name,
+                low=low,
+                high=high,
+            )
+        )
     return value
 
 
@@ -40,7 +51,13 @@ def _argv(value, name):
     if isinstance(value, str):
         value = [line.strip() for line in value.splitlines() if line.strip()]
     if not isinstance(value, list) or not all(isinstance(x, str) and x for x in value):
-        raise ValueError(f'{name}: 한 줄에 하나씩 명령과 인자를 적으세요.')
+        raise ValueError(
+            Msg(
+                'server.settings_api.put_the_command_and_each_argument',
+                '{name}: put the command and each argument on its own line.',
+                name=name,
+            )
+        )
     return [_text(x, name) for x in value]
 
 
@@ -48,15 +65,27 @@ def _ui(values, current):
     result = {**current}
     if 'language' in values:
         if values['language'] not in LANGUAGES:
-            raise ValueError('지원하지 않는 언어입니다.')
+            raise ValueError(
+                Msg('server.settings_api.unsupported_language', 'Unsupported language.')
+            )
         result['language'] = values['language']
     if 'theme' in values:
         if values['theme'] not in THEMES:
-            raise ValueError('테마는 system, light, dark 중 하나입니다.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.the_theme_must_be_system_light',
+                    'The theme must be system, light or dark.',
+                )
+            )
         result['theme'] = values['theme']
     if 'autocomplete' in values:
         if not isinstance(values['autocomplete'], bool):
-            raise ValueError('자동완성 값은 true 또는 false입니다.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.autocomplete_must_be_true_or_false',
+                    'Autocomplete must be true or false.',
+                )
+            )
         result['autocomplete'] = values['autocomplete']
     return result
 
@@ -88,9 +117,19 @@ def _tags(values, current):
     if 'exclude' in values:
         exclude = values['exclude']
         if not isinstance(exclude, list) or len(exclude) > 500:
-            raise ValueError('제외할 태그는 500개까지 목록으로 보내세요.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.send_excluded_tags_as_a_list',
+                    'Send excluded tags as a list of up to 500.',
+                )
+            )
         if not all(isinstance(tag, str) and len(tag) <= 100 for tag in exclude):
-            raise ValueError('제외할 태그는 100자 이하 글자여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.each_excluded_tag_must_be_text',
+                    'Each excluded tag must be text of 100 characters or fewer.',
+                )
+            )
         result['exclude'] = list(dict.fromkeys(tag.strip() for tag in exclude if tag.strip()))
     return result
 
@@ -99,7 +138,12 @@ def _gpu(values, current):
     result = copy.deepcopy(current)
     if 'enabled' in values:
         if not isinstance(values['enabled'], bool):
-            raise ValueError('GPU 대기 사용 값은 true 또는 false입니다.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.the_gpu_wait_switch_must_be',
+                    'The GPU wait switch must be true or false.',
+                )
+            )
         result['enabled'] = values['enabled']
     if 'min_free_vram_mb' in values:
         limits = result.setdefault('min_free_vram_mb', {})
@@ -115,7 +159,12 @@ def _vlm(values, current):
     result = {**current}
     if 'enabled' in values:
         if not isinstance(values['enabled'], bool):
-            raise ValueError('VLM 사용 값은 true 또는 false입니다.')
+            raise ValueError(
+                Msg(
+                    'server.settings_api.the_vlm_switch_must_be_true',
+                    'The VLM switch must be true or false.',
+                )
+            )
         result['enabled'] = values['enabled']
     for key in ('url', 'model', 'api_key_env', 'loaded_marker'):
         if key in values:
@@ -231,10 +280,14 @@ def get_all(studio):
 def save(studio, body):
     section = body.get('section')
     if section not in SECTIONS:
-        raise ValueError('없는 설정 항목입니다.')
+        raise ValueError(
+            Msg('server.settings_api.unknown_settings_section', 'Unknown settings section.')
+        )
     values = body.get('values')
     if not isinstance(values, dict):
-        raise ValueError('values는 객체여야 합니다.')
+        raise ValueError(
+            Msg('server.settings_api.values_must_be_an_object', 'values must be an object.')
+        )
     name, _, validate = SECTIONS[section]
     current, saved = _read(studio.root, section)
     updated = validate(values, current)

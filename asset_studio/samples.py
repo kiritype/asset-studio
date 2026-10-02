@@ -8,6 +8,7 @@ sample never touches global pieces. The work gets the first free code from W900.
 import json
 from pathlib import Path
 
+from .i18n import Msg
 from .library.layout import Location
 
 SAMPLES = Path(__file__).resolve().parents[1] / 'samples'
@@ -29,7 +30,7 @@ def _load(sample_id):
         data = json.loads(path.read_text(encoding='utf-8'))
         if data.get('id') == sample_id:
             return data
-    raise ValueError('없는 샘플입니다.')
+    raise ValueError(Msg('server.samples.sample_not_found', 'Sample not found.'))
 
 
 def import_sample(studio, sample_id):
@@ -41,7 +42,12 @@ def import_sample(studio, sample_id):
             (f'W{n:03d}' for n in range(FIRST_CODE, 1000) if f'W{n:03d}' not in used), None
         )
         if work_id is None:
-            raise ValueError('샘플에 쓸 작품 코드(W900~W999)가 남아 있지 않습니다.')
+            raise ValueError(
+                Msg(
+                    'server.samples.no_free_work_code_w900_w999',
+                    'No free work code (W900–W999) is left for samples.',
+                )
+            )
         store.save_work({'id': work_id, **data['work'], 'sample': data['id']})
         work = Location('work', work_id)
         for entry in data.get('work_pieces', []):

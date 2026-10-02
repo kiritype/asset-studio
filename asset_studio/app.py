@@ -17,6 +17,7 @@ from .generation.queue import JobQueueMixin
 from .generation.worker import WorkerMixin
 from .gpu import GpuBroker
 from .http.handler import handler_class
+from .i18n import Msg
 from .library.service import Library
 from .library.store import LibraryStore, check_layout
 from .lora.trainer import LoraTrainer
@@ -30,8 +31,9 @@ from .util import state_file
 from .validation.pipeline import ValidationPipeline
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
-INTERRUPTED_MESSAGE = (
-    '프로그램이 종료되어 결과 확인이 중단됐습니다. ComfyUI 상태를 확인한 후 재시도하세요.'
+INTERRUPTED_MESSAGE = Msg(
+    'server.app.the_app_stopped_before_the_result',
+    'The app stopped before the result was collected. Check ComfyUI, then retry.',
 )
 
 

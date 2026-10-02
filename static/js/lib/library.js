@@ -2,8 +2,12 @@
 // can be tested with node. The rules mirror asset_studio/library on the server.
 
 import {t, tr} from '../core/i18n.js';
-export const SCOPE_LABELS = {global: t('전역'), work: t('작품 공용'), character: t('캐릭터')};
-export const MODEL_FAMILY_LABELS = {anima: 'Anima', sdxl: 'SDXL·IL', shared: t('공용')};
+export const SCOPE_LABELS = {
+  global: t('common.global'),
+  work: t('library.shared_in_work'),
+  character: t('common.character'),
+};
+export const MODEL_FAMILY_LABELS = {anima: 'Anima', sdxl: 'SDXL·IL', shared: t('common.shared')};
 
 /** The model a prompt record was written for; older records were written for Anima. */
 export const modelFamily = (record) => record?.model_family || 'anima';
@@ -123,7 +127,7 @@ export function locationOf(record) {
 
 export function scopeLabel(record) {
   if (record.scope === 'character') return `${record.work_id}/${record.character_id}`;
-  return record.scope === 'work' ? t('{0} 공용', [record.work_id]) : t('전역');
+  return record.scope === 'work' ? t('common.shared_in', [record.work_id]) : t('common.global');
 }
 
 /** Folder tree of category paths: {name, path, children: [...]}, levels in defined order. */

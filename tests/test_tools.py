@@ -166,6 +166,7 @@ class InpaintGraphTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 check_options('inpaint', bad, {})
 
+
 class WorkspaceTest(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -374,7 +375,6 @@ class WorkspaceTest(unittest.TestCase):
         self.tools.remove([item['id']])
         self.assertFalse(list((self.root / 'data/tools/masks').glob(f'{item["id"]}*')))
 
-
     def test_result_of_a_gallery_asset_is_saved_beside_it_for_adoption(self):
         folder = self.root / 'outputs/W001/C001/001'
         folder.mkdir(parents=True)
@@ -394,7 +394,9 @@ class WorkspaceTest(unittest.TestCase):
         item = self.tools.add_gallery(['W001/C001/001/005.png'])['added'][0]
         mask = Image.new('L', (32, 32), 255)
         self.tools.set_mask(item['id'], mask, 'edited')
-        url = self.app.apply_censor({'id': item['id'], 'treatment': 'color', 'color': '#000000'})['url']
+        url = self.app.apply_censor({'id': item['id'], 'treatment': 'color', 'color': '#000000'})[
+            'url'
+        ]
         self.assertEqual(url, '/outputs/W001/C001/001/005_censor.png')
         record = json.loads((folder / '005_censor.json').read_text(encoding='utf-8'))
         self.assertEqual(record['category'], 'nsfw')
@@ -481,8 +483,9 @@ class WorkspaceTest(unittest.TestCase):
         from asset_studio.tools.postprocess import check_options, crop_region
 
         # The region is the box plus padding, enlarged toward the generation area.
-        self.assertEqual(crop_region((100, 100, 140, 120), (512, 512), 10, 256 * 256)[0],
-                         (90, 90, 150, 130))
+        self.assertEqual(
+            crop_region((100, 100, 140, 120), (512, 512), 10, 256 * 256)[0], (90, 90, 150, 130)
+        )
         region, size = crop_region((100, 100, 140, 120), (512, 512), 10, 1024 * 1024)
         self.assertEqual(size, (240, 160))  # Capped at 4x, multiples of 16.
         self.assertEqual(crop_region((0, 0, 512, 512), (512, 512), 0, 256 * 256)[1], (512, 512))
@@ -524,6 +527,7 @@ class WorkspaceTest(unittest.TestCase):
         job['post_options'] = {**job['post_options'], 'area': 'full'}
         self.app.post_graph(job)
         self.assertNotIn('post_crop', job)
+
 
 if __name__ == '__main__':
     unittest.main()

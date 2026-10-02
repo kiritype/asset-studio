@@ -6,6 +6,8 @@ import math
 from pathlib import PureWindowsPath
 from typing import Any
 
+from ..i18n import Msg
+
 DEFAULTS: dict[str, Any] = {
     'model': 'anima_aestheticV11.safetensors',
     'text_encoder': 'qwen_3_06b_base.safetensors',
@@ -151,7 +153,12 @@ def validate_settings(settings: dict[str, Any] | None, catalog: dict[str, Any]) 
     result['model_filename'] = entry['filename'] if entry else result['model']
     if family == 'sdxl':
         if result['model_loader'] != 'CheckpointLoaderSimple':
-            raise ValueError('SDXL은 체크포인트 모델을 골라야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.workflow.sdxl_needs_a_checkpoint_model',
+                    'SDXL needs a checkpoint model.',
+                )
+            )
         result['clip_skip'] = _integer(result.get('clip_skip', 2), 'clip_skip')
         if not 1 <= result['clip_skip'] <= 12:
             raise ValueError('clip_skip must be between 1 and 12')

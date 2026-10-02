@@ -16,6 +16,7 @@ from pathlib import Path, PureWindowsPath
 
 from PIL import Image
 
+from ..i18n import Msg, message_of
 from ..util import code, now, settings_file
 from . import records, trainer_setup
 from .trainer_setup import BASE_ALIASES, configured_bases
@@ -54,7 +55,10 @@ def options(root):
 
 
 WAIT_POLL_SECONDS = 2
-INTERRUPTED = '서버가 꺼져 학습을 더 따라갈 수 없습니다. 학습 도구의 로그와 결과 파일을 확인하세요.'
+INTERRUPTED = Msg(
+    'server.trainer.the_server_stopped_and_lost_track',
+    "The server stopped and lost track of this training. Check the trainer's log and output files.",
+)
 
 
 def load_settings(root):
@@ -165,13 +169,22 @@ class LoraTrainer:
             self.studio.store, work_id, character_id, body.get('dataset_id')
         )
         if not dataset_path.is_file():
-            raise ValueError('데이터셋을 먼저 저장하세요.')
+            raise ValueError(
+                Msg('server.trainer.save_the_dataset_first', 'Save the dataset first.')
+            )
         dataset = self.studio.store.read(dataset_path)
         if not dataset.get('items'):
-            raise ValueError('데이터셋에 이미지가 없습니다.')
+            raise ValueError(
+                Msg('server.trainer.the_dataset_has_no_images', 'The dataset has no images.')
+            )
         settings = load_settings(self.studio.root)
         if not settings['lora_dir']:
-            raise ValueError('설정 › LoRA 학습에서 LoRA 저장 폴더를 지정하세요.')
+            raise ValueError(
+                Msg(
+                    'server.trainer.set_the_lora_output_folder_in',
+                    'Set the LoRA output folder in Settings › LoRA training.',
+                )
+            )
         params = {
             **DEFAULT_PARAMS,
             **{k: v for k, v in (body.get('params') or {}).items() if v not in (None, '')},
@@ -182,22 +195,43 @@ class LoraTrainer:
                 or not str(params[key]).isdigit()
                 or int(params[key]) < 1
             ):
-                raise ValueError(f'{key}는 1 이상의 정수여야 합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.trainer.must_be_a_whole_number_of',
+                        '{key} must be a whole number of 1 or more.',
+                        key=key,
+                    )
+                )
             params[key] = int(params[key])
         float(params['learning_rate'])
         if params['method'] not in METHODS:
-            raise ValueError('학습 방식을 목록에서 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.trainer.choose_a_training_method_from_the',
+                    'Choose a training method from the list.',
+                )
+            )
         params['base'] = BASE_ALIASES.get(params['base'], params['base'])
         bases = trainer_setup.prepare(self.studio.root, settings)
         if params['base'] not in bases:
-            raise ValueError('베이스 모델을 목록에서 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.trainer.choose_a_base_model_from_the',
+                    'Choose a base model from the list.',
+                )
+            )
         base = bases[params['base']]
         settings = {**settings, 'trainer_method': params['method']}
         settings.update(trainer_preset=base['preset'], trainer_cache_dir=base['cache_dir'])
         settings['base_model'] = base['base_model']
         with self.lock:
             if self.active:
-                raise ValueError('다른 LoRA 학습이 진행 중입니다. 끝난 뒤에 시작하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.trainer.another_lora_is_training_start_after',
+                        'Another LoRA is training. Start after it finishes.',
+                    )
+                )
             run_id = records.next_id(
                 records.list_runs(self.studio.store, work_id, character_id), 'R'
             )
@@ -237,7 +271,12 @@ class LoraTrainer:
         with self.lock:
             key = (code(body.get('work_id')), code(body.get('character_id')), body.get('run_id'))
             if self.active != key:
-                raise ValueError('진행 중인 학습이 아닙니다.')
+                raise ValueError(
+                    Msg(
+                        'server.trainer.this_training_is_not_running',
+                        'This training is not running.',
+                    )
+                )
             self.cancel_requested = True
             if self.process and self.process.poll() is None:
                 # The trainer starts worker processes of its own; stop the whole tree.
@@ -286,7 +325,13 @@ class LoraTrainer:
         for item in dataset['items']:
             source = self.studio.gallery._safe_path(item['path'])
             if self.studio.review_store.sha256(item['path'], fresh=True) != item['sha256']:
-                raise ValueError(f'데이터셋을 만든 뒤 바뀐 이미지입니다: {item["path"]}')
+                raise ValueError(
+                    Msg(
+                        'server.trainer.image_changed_after_the_dataset_was',
+                        'Image changed after the dataset was made: {path}',
+                        path=item['path'],
+                    )
+                )
             stem = Path(item['path']).stem
             with Image.open(source) as image:
                 image.convert('RGB').save(target / f'{stem}.png')
@@ -311,7 +356,12 @@ class LoraTrainer:
         self._check_cancel()
         if exit_code:
             raise RuntimeError(
-                f'학습 도구가 실패했습니다 (종료 코드 {exit_code}). {log_path}을 확인하세요.'
+                Msg(
+                    'server.trainer.the_trainer_failed_exit_code_check',
+                    'The trainer failed (exit code {exit_code}). Check {log_path}.',
+                    exit_code=exit_code,
+                    log_path=log_path,
+                )
             )
 
     def _execute(self, run, dataset, settings):
@@ -368,7 +418,7 @@ class LoraTrainer:
             self._update(run, status='cancelled', finished_at=now())
         except Exception as exc:
             logging.exception('LoRA training failed: %s', run['output_name'])
-            self._update(run, status='failed', finished_at=now(), error=str(exc)[:500])
+            self._update(run, status='failed', finished_at=now(), error=message_of(exc))
         finally:
             with self.lock:
                 self.process = None
@@ -385,7 +435,13 @@ class LoraTrainer:
         ]
         final = checkpoints / f'{name}.safetensors'
         if not final.is_file():
-            raise RuntimeError(f'학습은 끝났지만 {final}이 없습니다.')
+            raise RuntimeError(
+                Msg(
+                    'server.trainer.training_finished_but_is_missing',
+                    'Training finished but {final} is missing.',
+                    final=final,
+                )
+            )
         found.append((int(run['settings']['epochs']), final))
         outputs = []
         for epoch, source in sorted(set(found)):
@@ -401,7 +457,12 @@ class LoraTrainer:
         run = self.get(body.get('work_id'), body.get('character_id'), body.get('run_id'))
         output = next((o for o in run.get('outputs', []) if o['epoch'] == body.get('epoch')), None)
         if run.get('status') != 'done' or output is None:
-            raise ValueError('끝난 학습의 에폭을 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.trainer.choose_an_epoch_of_a_finished',
+                    'Choose an epoch of a finished training.',
+                )
+            )
         ident = Path(output['file']).stem
         # ComfyUI names files in sub-folders with the folder (``anima\name.safetensors``).
         catalog = self.studio.comfy.catalog().get('loras', [])

@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .i18n import Msg, wire
+
 # Windows refuses to replace or open a file while another thread has it open; such
 # clashes last milliseconds, so the operation is retried briefly before giving up.
 SHARING_RETRIES = 50
@@ -55,7 +57,7 @@ def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
     try:
-        temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+        temp.write_text(json.dumps(wire(value), ensure_ascii=False, indent=2), encoding='utf-8')
         replace_file(temp, path)
     finally:
         temp.unlink(missing_ok=True)
@@ -64,7 +66,7 @@ def atomic_json(path, value):
 def code(value):
     value = str(value)
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', value):
-        raise ValueError('올바르지 않은 코드입니다.')
+        raise ValueError(Msg('server.util.invalid_code', 'Invalid code.'))
     return value
 
 

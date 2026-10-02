@@ -9,6 +9,7 @@ from urllib.parse import quote, urlencode
 
 from PIL import Image, PngImagePlugin
 
+from ..i18n import Msg, message_of
 from ..util import atomic_json, code, now, replace_file
 from .workflow import build_ui_workflow, build_workflow
 
@@ -26,7 +27,10 @@ class WorkerMixin:
         image.load()
         if all(high == 0 for low, high in image.convert('RGB').getextrema()):
             raise RuntimeError(
-                '완전 검정 이미지가 반환됐습니다. 정상 결과로 저장하지 않고 큐를 일시정지했습니다.'
+                Msg(
+                    'server.worker.an_all_black_image_came_back',
+                    'An all-black image came back. It was not saved and the queue is paused.',
+                )
             )
         if job.get('kind') == 'lab':
             # Lab tries are not assets: one folder per day, named by time, group and order.
@@ -98,7 +102,13 @@ class WorkerMixin:
                 free = not self.paused and self.gpu.generation_allowed()
                 job = self.validation.next_generation_job() if free else None
                 if job is not None:
-                    job.update(status='running', started_at=now(), progress='ComfyUI 연결 중')
+                    job.update(
+                        status='running',
+                        started_at=now(),
+                        progress=Msg(
+                            'server.worker.connecting_to_comfyui', 'Connecting to ComfyUI'
+                        ),
+                    )
                     self.persist()
             if job is None:
                 try:
@@ -120,7 +130,12 @@ class WorkerMixin:
                     if not queue.get('queue_running') and not queue.get('queue_pending'):
                         break
                     if time.monotonic() > deadline:
-                        raise RuntimeError('ComfyUI의 다른 작업을 30분 동안 기다렸습니다.')
+                        raise RuntimeError(
+                            Msg(
+                                'server.worker.waited_30_minutes_for_other_comfyui',
+                                'Waited 30 minutes for other ComfyUI work.',
+                            )
+                        )
                     self.stop.wait(2)
                 if cancelling:
                     with self.lock:
@@ -143,11 +158,19 @@ class WorkerMixin:
                 )
                 if response.get('node_errors') or not response.get('prompt_id'):
                     raise RuntimeError(
-                        '워크플로우 검증 실패: ' + json.dumps(response, ensure_ascii=False)[:3000]
+                        Msg(
+                            'server.worker.workflow_validation_failed',
+                            'Workflow validation failed: {response}',
+                            response=json.dumps(response, ensure_ascii=False)[:3000],
+                        )
                     )
                 prompt_id = response['prompt_id']
                 with self.lock:
-                    working = '생성 중' if job.get('kind') in (None, 'lab') else '처리 중'
+                    working = (
+                        Msg('server.worker.generating', 'Generating')
+                        if job.get('kind') in (None, 'lab')
+                        else Msg('server.worker.processing', 'Processing')
+                    )
                     job.update(prompt_id=prompt_id, progress=working)
                     self.persist()
                 deadline = time.monotonic() + 1800
@@ -170,10 +193,13 @@ class WorkerMixin:
                             if cancelling:
                                 break
                             raise RuntimeError(
-                                'ComfyUI 생성 오류: '
-                                + json.dumps(
-                                    entry['status'].get('messages', []), ensure_ascii=False
-                                )[-2500:]
+                                Msg(
+                                    'server.worker.comfyui_generation_error',
+                                    'ComfyUI generation error: {status}',
+                                    status=json.dumps(
+                                        entry['status'].get('messages', []), ensure_ascii=False
+                                    )[-2500:],
+                                )
                             )
                         if cancelling:
                             break
@@ -184,13 +210,18 @@ class WorkerMixin:
                                     status='completed',
                                     tag_count=len(tags),
                                     finished_at=now(),
-                                    progress='완료',
+                                    progress=Msg('server.worker.done', 'Done'),
                                 )
                                 self.persist()
                             break
                         images = entry.get('outputs', {}).get('output', {}).get('images', [])
                         if not images:
-                            raise RuntimeError('ComfyUI가 결과 이미지를 반환하지 않았습니다.')
+                            raise RuntimeError(
+                                Msg(
+                                    'server.worker.comfyui_returned_no_image',
+                                    'ComfyUI returned no image.',
+                                )
+                            )
                         item = images[0]
                         data = self.comfy.request(
                             '/view?'
@@ -209,22 +240,34 @@ class WorkerMixin:
                                 image_url=image_url,
                                 metadata_url=image_url.rsplit('.', 1)[0] + '.json',
                                 finished_at=now(),
-                                progress='완료',
+                                progress=Msg('server.worker.done', 'Done'),
                             )
                             self.persist()
                         break
                     if time.monotonic() > deadline:
                         raise RuntimeError(
-                            '생성 결과 대기 시간이 30분을 넘었습니다. '
-                            'ComfyUI에서 진행 상태를 확인하세요.'
+                            Msg(
+                                'server.worker.waited_more_than_30_minutes_for',
+                                'Waited more than 30 minutes for the result. Check progress in '
+                                'ComfyUI.',
+                            )
                         )
                 if cancelling:
                     with self.lock:
-                        job.update(status='cancelled', finished_at=now(), progress='취소')
+                        job.update(
+                            status='cancelled',
+                            finished_at=now(),
+                            progress=Msg('server.worker.cancel', 'Cancel'),
+                        )
                         self.persist()
             except Exception as e:
                 logging.exception('Job failed: %s', job['id'])
                 with self.lock:
-                    job.update(status='failed', error=str(e), finished_at=now(), progress='실패')
+                    job.update(
+                        status='failed',
+                        error=message_of(e),
+                        finished_at=now(),
+                        progress=Msg('server.worker.failed', 'Failed'),
+                    )
                     self.paused = True
                     self.persist()

@@ -127,7 +127,7 @@ assert.deepEqual(
   {scope: 'character', work_id: 'W001', character_id: 'C001'},
 );
 assert.deepEqual(lib.locationOf({scope: 'global', work_id: 'ignored'}), {scope: 'global'});
-assert.equal(lib.scopeLabel({scope: 'work', work_id: 'W001'}), 'W001 공용');
+assert.equal(lib.scopeLabel({scope: 'work', work_id: 'W001'}), 'Shared in W001');
 assert.equal(
   lib.scopeLabel({scope: 'character', work_id: 'W001', character_id: 'C001'}),
   'W001/C001',

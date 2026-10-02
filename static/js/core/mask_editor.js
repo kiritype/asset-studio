@@ -86,15 +86,15 @@ export function createMaskEditor({
 
   // ---- toolbar ------------------------------------------------------------------------
 
-  const brush = button(t('브러시'), () => setMode('brush'), '', 'B');
-  const eraser = button(t('지우개'), () => setMode('eraser'), '', 'E');
+  const brush = button(t('mask.brush'), () => setMode('brush'), '', 'B');
+  const eraser = button(t('mask.eraser'), () => setMode('eraser'), '', 'E');
   const sizeInput = range(2, Math.max(64, Math.round(Math.max(width, height) / 4)), size);
   const sizeLabel = el('span', 'mask-size');
   const sizeBox = el('label', 'mask-group');
-  sizeBox.append(el('span', '', t('크기')), sizeInput, sizeLabel);
-  const undoButton = button(t('되돌리기'), restoreUndo, '', 'Ctrl+Z');
-  const redoButton = button(t('다시 실행'), restoreRedo, '', 'Ctrl+Y');
-  const fitButton = button(t('화면에 맞춤'), () => ((userView = false), fit()), '', '0');
+  sizeBox.append(el('span', '', t('common.size')), sizeInput, sizeLabel);
+  const undoButton = button(t('mask.undo'), restoreUndo, '', 'Ctrl+Z');
+  const redoButton = button(t('mask.redo'), restoreRedo, '', 'Ctrl+Y');
+  const fitButton = button(t('common.fit_to_screen'), () => ((userView = false), fit()), '', '0');
   const actualButton = button('100%', () => zoomTo(1), '', '1');
   const zoomLabel = el('span', 'mask-size');
   const show = el('input');
@@ -102,12 +102,12 @@ export function createMaskEditor({
   show.checked = true;
   const opacity = range(10, 100, 55);
   const overlayBox = el('label', 'mask-group');
-  overlayBox.append(show, el('span', '', t('마스크 표시')), opacity);
+  overlayBox.append(show, el('span', '', t('mask.show_mask')), opacity);
   const backgroundSelect = el('select');
   for (const [value, text] of [
-    ['checker', t('체커')],
-    ['white', t('흰색')],
-    ['black', t('검정')],
+    ['checker', t('mask.checker')],
+    ['white', t('mask.white')],
+    ['black', t('mask.black')],
   ]) {
     const option = el('option', '', text);
     option.value = value;
@@ -115,12 +115,12 @@ export function createMaskEditor({
   }
   backgroundSelect.value = background;
   const backgroundBox = el('label', 'mask-group');
-  backgroundBox.append(el('span', '', t('배경')), backgroundSelect);
+  backgroundBox.append(el('span', '', t('mask.background')), backgroundSelect);
   const status = el('span', 'mask-status');
   const previewInput = el('input');
   previewInput.type = 'checkbox';
   const previewBox = el('label', 'mask-group');
-  previewBox.append(previewInput, el('span', '', t('결과 미리보기')));
+  previewBox.append(previewInput, el('span', '', t('mask.preview_result')));
   previewBox.hidden = !preview;
   function renderPreview() {
     if (!previewInput.checked) return;
@@ -347,7 +347,7 @@ export function createMaskEditor({
     if (!maskUrl) return;
     const response = await fetch(maskUrl, {cache: 'no-store'});
     if (!response.ok) {
-      status.textContent = t('마스크 없음 · 브러시로 칠하거나 부위를 검출하세요.');
+      status.textContent = t('common.no_mask_paint_with_the_brush');
       return;
     }
     const bitmap = await createImageBitmap(await response.blob());
@@ -386,7 +386,7 @@ export function createMaskEditor({
   });
   sizing.observe(viewport);
   loadMask().catch(() => {
-    status.textContent = t('마스크를 불러오지 못했습니다.');
+    status.textContent = t('mask.could_not_load_the_mask');
   });
   return {
     element: root,

@@ -8,15 +8,15 @@ import {withTagComplete} from '../core/tag_input.js';
 const POLL_MS = 3000;
 const ACTIVE = ['waiting_gpu', 'preprocessing', 'training'];
 const RUN_LABELS = {
-  waiting_gpu: t('GPU 대기'),
-  preprocessing: t('전처리 중'),
-  training: t('학습 중'),
-  done: t('완료'),
-  failed: t('실패'),
-  cancelled: t('취소'),
-  interrupted: t('중단'),
+  waiting_gpu: t('lora.gpu_wait'),
+  preprocessing: t('lora.preprocessing'),
+  training: t('lora.training_2'),
+  done: t('common.done'),
+  failed: t('common.failed'),
+  cancelled: t('common.cancel'),
+  interrupted: t('common.interrupted'),
 };
-const FAMILY_LABELS = {anima: 'Anima', sdxl: 'SDXL·IL', shared: t('공용')};
+const FAMILY_LABELS = {anima: 'Anima', sdxl: 'SDXL·IL', shared: t('common.shared')};
 
 const el = (tag, cls = '', text) => {
   const n = document.createElement(tag);
@@ -83,11 +83,7 @@ export function createLora(ctx) {
   const header = el('header', 'lr-header');
   header.append(
     el('h1', '', 'LoRA'),
-    el(
-      'p',
-      '',
-      t('캐릭터별로 학습 이미지를 고르고 학습한 뒤, 결과를 등록해 생성에 자동으로 적용합니다.'),
-    ),
+    el('p', '', t('lora.choose_training_images_per_character_train')),
   );
   const side = el('aside', 'lr-side');
   const main = el('div', 'lr-main');
@@ -119,7 +115,7 @@ export function createLora(ctx) {
       if (item.id === state.character) button.setAttribute('aria-current', 'true');
       list.append(button);
     }
-    side.replaceChildren(field(t('작품'), workSelect), list);
+    side.replaceChildren(field(t('common.work'), workSelect), list);
   }
 
   async function chooseCharacter(id) {
@@ -179,7 +175,7 @@ export function createLora(ctx) {
         triggers: Object.keys(triggers).length ? triggers : undefined,
         paths,
       });
-      ctx.notify(t('데이터셋 {0}을 저장했습니다 ({1}장).', [result.entity.id, paths.length]));
+      ctx.notify(t('lora.saved_dataset_images', [result.entity.id, paths.length]));
       await loadCharacter();
       await chooseDataset(result.entity.id);
     } catch (error) {
@@ -207,9 +203,7 @@ export function createLora(ctx) {
         payload: {...latest.entity, items},
         expected_revision: latest.revision,
       });
-      ctx.notify(
-        t('캡션 {0}개를 저장했습니다. 직접 고친 캡션은 다시 만들 때도 유지됩니다.', [edits.length]),
-      );
+      ctx.notify(t('lora.saved_captions_captions_you_edited_are', [edits.length]));
       state.captions = {};
       await loadCharacter();
       renderMain();
@@ -227,7 +221,7 @@ export function createLora(ctx) {
         id: dataset.id,
         expected_revision: latest.revision,
       });
-      ctx.notify(t('자동 캡션을 다시 만들었습니다. 직접 고친 캡션은 그대로입니다.'));
+      ctx.notify(t('lora.rebuilt_the_automatic_captions_captions_you'));
       await loadCharacter();
       renderMain();
     } catch (error) {
@@ -240,10 +234,10 @@ export function createLora(ctx) {
     const dataset = currentDataset();
     const chooser = select(
       [
-        ['', t('+ 새 데이터셋')],
+        ['', t('lora.new_dataset')],
         ...state.datasets.map((d) => [
           d.id,
-          t('{0} · {1} · {2}장', [d.id, d.name || '', d.items.length]),
+          t('lora.images', [d.id, d.name || '', d.items.length]),
         ]),
       ],
       state.dataset,
@@ -253,7 +247,7 @@ export function createLora(ctx) {
       o.id,
       `${o.id} · ${o.name || ''}`,
     ]);
-    const outfit = select([['', t('의상 세트 선택')], ...outfits], state.outfit);
+    const outfit = select([['', t('lora.choose_an_outfit_set')], ...outfits], state.outfit);
     outfit.disabled = !!dataset; // A dataset belongs to one outfit set.
     outfit.addEventListener('change', async () => {
       state.outfit = outfit.value;
@@ -262,7 +256,7 @@ export function createLora(ctx) {
       for (const item of state.candidates) if (item.selected) state.chosen.add(item.path);
       renderMain();
     });
-    const name = input('text', state.draft.name, {placeholder: t('예: 평상복 v3')});
+    const name = input('text', state.draft.name, {placeholder: t('lora.e_g_casual_v3')});
     name.addEventListener('input', () => (state.draft.name = name.value));
     const triggerCharacter = input('text', state.draft.character, {
       placeholder: `${state.work}_${state.character}`.toLowerCase(),
@@ -271,39 +265,45 @@ export function createLora(ctx) {
       'input',
       () => (state.draft.character = triggerCharacter.value),
     );
-    const triggerOutfit = input('text', state.draft.outfit, {placeholder: t('비우면 넣지 않음')});
+    const triggerOutfit = input('text', state.draft.outfit, {
+      placeholder: t('lora.leave_empty_to_skip'),
+    });
     triggerOutfit.addEventListener('input', () => (state.draft.outfit = triggerOutfit.value));
     const top = el('div', 'lr-grid2');
     top.append(
-      field(t('데이터셋'), chooser),
-      field(t('의상 세트'), outfit),
-      field(t('이름'), name),
-      field(t('캐릭터 트리거'), triggerCharacter, t('캡션 맨 앞쪽에 들어가는 이 캐릭터 전용 단어')),
-      field(t('의상 트리거'), triggerOutfit, t('의상을 따로 배우게 할 때만')),
+      field(t('lora.dataset'), chooser),
+      field(t('common.outfit_set'), outfit),
+      field(t('common.name'), name),
+      field(
+        t('lora.character_trigger'),
+        triggerCharacter,
+        t('lora.a_word_unique_to_this_character'),
+      ),
+      field(t('lora.outfit_trigger'), triggerOutfit, t('lora.only_to_learn_the_outfit_separately')),
     );
     box.append(top);
 
     const tools = el('div', 'lr-row');
     const picked = state.candidates.filter((c) => state.chosen.has(c.path)).length;
     tools.append(
-      el('strong', '', t('{0}/{1}장 선택', [picked, state.candidates.length])),
-      btn(t('채택 이미지만'), () => {
+      el('strong', '', t('lora.selected', [picked, state.candidates.length])),
+      btn(t('lora.adopted_only'), () => {
         state.chosen = new Set(state.candidates.filter((c) => c.selected).map((c) => c.path));
         renderMain();
       }),
-      btn(t('통과 이미지 전부'), () => {
+      btn(t('lora.all_passed_images'), () => {
         state.chosen = new Set(
           state.candidates.filter((c) => c.human_status === 'pass').map((c) => c.path),
         );
         renderMain();
       }),
-      btn(t('선택 해제'), () => {
+      btn(t('common.clear_selection'), () => {
         state.chosen.clear();
         renderMain();
       }),
     );
     const save = btn(
-      dataset ? t('데이터셋 고쳐 저장') : t('데이터셋 만들기'),
+      dataset ? t('lora.update_dataset') : t('lora.create_dataset'),
       saveDataset,
       'lr-primary',
     );
@@ -312,9 +312,9 @@ export function createLora(ctx) {
     box.append(tools);
 
     const grid = el('div', 'lr-images');
-    if (!state.outfit) grid.append(el('p', 'lr-muted', t('의상 세트를 고르세요.')));
+    if (!state.outfit) grid.append(el('p', 'lr-muted', t('lora.choose_an_outfit_set_2')));
     else if (!state.candidates.length)
-      grid.append(el('p', 'lr-muted', t('이 의상 세트의 이미지가 없습니다.')));
+      grid.append(el('p', 'lr-muted', t('lora.no_images_for_this_outfit_set')));
     for (const item of state.candidates) {
       const card = el('label', 'lr-image');
       if (state.chosen.has(item.path)) card.classList.add('chosen');
@@ -331,10 +331,11 @@ export function createLora(ctx) {
       image.loading = 'lazy';
       const caption = el('div', 'lr-image-caption');
       caption.append(check, el('span', '', item.path.split('/').pop()));
-      if (item.selected) caption.append(el('small', 'lr-badge lr-adopted', t('채택')));
-      else if (item.human_status === 'pass') caption.append(el('small', 'lr-badge', t('통과')));
+      if (item.selected) caption.append(el('small', 'lr-badge lr-adopted', t('lora.adopted')));
+      else if (item.human_status === 'pass')
+        caption.append(el('small', 'lr-badge', t('common.pass')));
       else if (item.human_status === 'fail')
-        caption.append(el('small', 'lr-badge lr-failed', t('실패')));
+        caption.append(el('small', 'lr-badge lr-failed', t('common.failed')));
       card.title = item.path;
       card.append(image, caption);
       grid.append(card);
@@ -343,11 +344,11 @@ export function createLora(ctx) {
 
     if (dataset) {
       const head = el('div', 'lr-row lr-between');
-      head.append(el('h3', '', t('캡션 · {0}장', [dataset.items.length])));
+      head.append(el('h3', '', t('lora.captions', [dataset.items.length])));
       const buttons = el('div', 'lr-row');
-      const saveButton = btn(t('고친 캡션 저장'), saveCaptions, 'lr-primary');
+      const saveButton = btn(t('lora.save_edited_captions'), saveCaptions, 'lr-primary');
       saveButton.disabled = !Object.keys(state.captions).length || !!ctx.preview;
-      const again = btn(t('자동 캡션 다시 만들기'), recaption);
+      const again = btn(t('lora.rebuild_automatic_captions'), recaption);
       again.disabled = !!ctx.preview;
       buttons.append(again, saveButton);
       head.append(buttons);
@@ -369,7 +370,7 @@ export function createLora(ctx) {
         const label = el(
           'small',
           'lr-muted',
-          `${item.path}${item.caption_edited ? t(' · 직접 고침') : ''}`,
+          `${item.path}${item.caption_edited ? t('lora.edited_by_hand') : ''}`,
         );
         const text = el('div');
         text.append(label, areaBox);
@@ -397,16 +398,14 @@ export function createLora(ctx) {
           base: train.base,
         },
       });
-      ctx.notify(
-        t('{0} 학습을 시작했습니다. 생성 중인 이미지가 끝나면 GPU를 잡습니다.', [result.run.id]),
-      );
+      ctx.notify(t('lora.started_training_it_takes_the_gpu', [result.run.id]));
       await loadRuns();
     } catch (error) {
       fail(error);
     }
   }
   async function cancelRun(run) {
-    if (!window.confirm(t('{0} 학습을 취소할까요?', [run.id]))) return;
+    if (!window.confirm(t('lora.cancel_training', [run.id]))) return;
     try {
       await ctx.api('/api/lora/runs/cancel', {...who(), run_id: run.id});
       await loadRuns();
@@ -416,7 +415,7 @@ export function createLora(ctx) {
   }
   async function register(run, output) {
     const name = window.prompt(
-      t('등록할 LoRA 이름'),
+      t('lora.name_for_the_lora'),
       `${state.character} ${run.id} e${output.epoch}`,
     );
     if (name == null) return;
@@ -427,7 +426,7 @@ export function createLora(ctx) {
         epoch: output.epoch,
         name: name.trim() || undefined,
       });
-      ctx.notify(t('LoRA 목록에 등록했습니다. "LoRA 목록" 탭에서 자동 적용을 켤 수 있습니다.'));
+      ctx.notify(t('lora.registered_turn_on_auto_apply_in'));
       await loadLoras();
     } catch (error) {
       fail(error);
@@ -438,7 +437,7 @@ export function createLora(ctx) {
     const box = el('div');
     const options = state.options;
     if (!options) {
-      box.append(el('p', 'lr-muted', t('읽는 중…')));
+      box.append(el('p', 'lr-muted', t('lora.loading')));
       return box;
     }
     if (!state.train) state.train = {...options.defaults, dataset: state.datasets.at(-1)?.id || ''};
@@ -447,10 +446,7 @@ export function createLora(ctx) {
       train.dataset = state.datasets.at(-1)?.id || '';
     const form = el('div', 'lr-grid2');
     const dataset = select(
-      state.datasets.map((d) => [
-        d.id,
-        t('{0} · {1} · {2}장', [d.id, d.name || '', d.items.length]),
-      ]),
+      state.datasets.map((d) => [d.id, t('lora.images', [d.id, d.name || '', d.items.length])]),
       train.dataset,
     );
     dataset.addEventListener('change', () => (train.dataset = dataset.value));
@@ -472,32 +468,24 @@ export function createLora(ctx) {
     const lr = input('text', train.learning_rate);
     lr.addEventListener('input', () => (train.learning_rate = lr.value));
     form.append(
-      field(t('데이터셋'), dataset),
-      field(t('방식'), method),
-      field(t('베이스 모델'), base, t('기본값은 공식 base로 학습하는 T-LoRA 설정입니다.')),
-      field(t('에폭'), number('epochs', {min: 1, max: 400})),
+      field(t('lora.dataset'), dataset),
+      field(t('common.method'), method),
+      field(t('lora.base_model'), base, t('lora.the_defaults_train_a_t_lora')),
+      field(t('lora.epochs'), number('epochs', {min: 1, max: 400})),
       field(
-        t('저장 간격(에폭)'),
+        t('lora.save_every_epochs'),
         number('save_every', {min: 1, max: 400}),
-        t('저장한 에폭마다 파일이 생깁니다.'),
+        t('lora.each_saved_epoch_becomes_a_file'),
       ),
-      field(t('학습률'), lr, t('예: 1e-4')),
+      field(t('lora.learning_rate'), lr, t('lora.e_g_1e_4')),
     );
     const active = state.runs.some((r) => ACTIVE.includes(r.status));
-    const start = btn(t('학습 시작'), startRun, 'lr-primary');
+    const start = btn(t('lora.start_training'), startRun, 'lr-primary');
     start.disabled = !train.dataset || active || !!ctx.preview;
-    box.append(
-      form,
-      start,
-      el(
-        'p',
-        'lr-muted',
-        t('학습 중에는 새 이미지 생성이 멈춥니다. 대기열에 있던 작업은 학습이 끝난 뒤 이어집니다.'),
-      ),
-    );
+    box.append(form, start, el('p', 'lr-muted', t('lora.new_images_are_not_generated_while')));
 
-    box.append(el('h3', '', t('학습 기록')));
-    if (!state.runs.length) box.append(el('p', 'lr-muted', t('아직 학습한 적이 없습니다.')));
+    box.append(el('h3', '', t('lora.training_runs')));
+    if (!state.runs.length) box.append(el('p', 'lr-muted', t('lora.no_trainings_yet')));
     for (const run of [...state.runs].reverse()) {
       const card = el('div', `lr-run lr-run-${run.status}`);
       const head = el('div', 'lr-row lr-between');
@@ -507,7 +495,7 @@ export function createLora(ctx) {
         el(
           'small',
           'lr-muted',
-          t('{0} · {1} · {2} · {3}에폭 · lr {4}', [
+          t('lora.epochs_lr', [
             run.dataset_id,
             s.method || '',
             s.base_model || '',
@@ -529,7 +517,7 @@ export function createLora(ctx) {
             'p',
             'lr-muted',
             p.step
-              ? t('스텝 {0}/{1} · 에폭 {2}/{3}{4}', [
+              ? t('lora.step_epoch', [
                   p.step,
                   p.total_steps,
                   p.epoch,
@@ -538,7 +526,7 @@ export function createLora(ctx) {
                 ])
               : RUN_LABELS[run.status],
           ),
-          btn(t('취소'), () => cancelRun(run), 'lr-danger'),
+          btn(t('common.cancel'), () => cancelRun(run), 'lr-danger'),
         );
       }
       if (run.error) card.append(el('p', 'lr-error', tr(run.error)));
@@ -550,7 +538,7 @@ export function createLora(ctx) {
         for (const output of run.outputs) {
           const done = registered.has(output.epoch);
           const b = btn(
-            done ? t('e{0} 등록됨', [output.epoch]) : t('e{0} 등록', [output.epoch]),
+            done ? t('lora.e_registered', [output.epoch]) : t('lora.register_e', [output.epoch]),
             () => register(run, output),
           );
           b.disabled = done || !!ctx.preview || run.status !== 'done';
@@ -562,7 +550,7 @@ export function createLora(ctx) {
       if (run.log_path) {
         // Show the part under the Studio folder (logs/lora/...); the full path stays in the tooltip.
         const short = run.log_path.replace(/^.*?[\\/](logs[\\/]lora[\\/])/, '$1');
-        const log = el('small', 'lr-muted lr-path', t('로그: {0}', [short]));
+        const log = el('small', 'lr-muted lr-path', t('lora.log', [short]));
         log.title = run.log_path;
         card.append(log);
       }
@@ -588,12 +576,7 @@ export function createLora(ctx) {
     }
   }
   async function deleteLora(lora) {
-    if (
-      !window.confirm(
-        t('{0}를 목록에서 지울까요? 휴지통으로 가고 LoRA 파일은 남습니다.', [lora.name || lora.id]),
-      )
-    )
-      return;
+    if (!window.confirm(t('lora.remove_from_the_list_it_goes', [lora.name || lora.id]))) return;
     try {
       const latest = await ctx.api(`/api/library/entity?${query({kind: 'lora', id: lora.id})}`);
       await ctx.api('/api/loras/delete', {id: lora.id, expected_revision: latest.revision});
@@ -610,16 +593,9 @@ export function createLora(ctx) {
         l.scope === 'global' ||
         (l.origin?.work_id === state.work && l.origin?.character_id === state.character),
     );
-    box.append(
-      el(
-        'p',
-        'lr-muted',
-        t(
-          '자동 적용을 켠 LoRA는 작업 메뉴에서 이 캐릭터를 생성할 때 설정에 들어가고, 트리거 단어가 외형 앞에 붙습니다. 캐릭터·의상·모델 계열마다 하나만 켤 수 있습니다.',
-        ),
-      ),
-    );
-    if (!mine.length) box.append(el('p', 'lr-muted', t('이 캐릭터에 등록된 LoRA가 없습니다.')));
+    box.append(el('p', 'lr-muted', t('lora.a_lora_with_auto_apply_is')));
+    if (!mine.length)
+      box.append(el('p', 'lr-muted', t('lora.no_loras_registered_for_this_character')));
     for (const lora of mine) {
       const card = el('div', 'lr-lora');
       const head = el('div', 'lr-row lr-between');
@@ -628,16 +604,16 @@ export function createLora(ctx) {
       auto.addEventListener('change', () => saveLora(lora, {auto_apply: auto.checked}));
       const applyTo = select(
         [
-          ['character', t('이 캐릭터 전체')],
-          ['outfit', t('의상 {0}일 때만', [lora.origin?.outfit_set_id || ''])],
+          ['character', t('lora.whole_character')],
+          ['outfit', t('lora.only_with_outfit', [lora.origin?.outfit_set_id || ''])],
         ],
         lora.apply_to || 'character',
       );
       applyTo.addEventListener('change', () => saveLora(lora, {apply_to: applyTo.value}));
       const scope = select(
         [
-          ['character', t('캐릭터 전용')],
-          ['global', t('전역 (모든 캐릭터)')],
+          ['character', t('lora.character_only')],
+          ['global', t('lora.global_all_characters')],
         ],
         lora.scope,
       );
@@ -647,22 +623,22 @@ export function createLora(ctx) {
       const family = select(Object.entries(FAMILY_LABELS), lora.model_family || 'anima');
       family.addEventListener('change', () => saveLora(lora, {model_family: family.value}));
       const autoLabel = el('label', 'lr-check');
-      autoLabel.append(auto, el('span', '', t('자동 적용')));
+      autoLabel.append(auto, el('span', '', t('lora.auto_apply')));
       const controls = el('div', 'lr-grid4');
       controls.append(
         autoLabel,
-        field(t('적용 대상'), applyTo),
-        field(t('범위'), scope),
-        field(t('강도'), strength),
-        field(t('모델 계열'), family),
+        field(t('lora.applies_to'), applyTo),
+        field(t('common.scope'), scope),
+        field(t('lora.strength'), strength),
+        field(t('common.model_family'), family),
       );
       for (const control of [auto, applyTo, scope, strength, family])
         control.disabled = !!ctx.preview;
       const triggers = Object.values(lora.triggers || {}).filter(Boolean);
       const origin = lora.origin
         ? `${lora.origin.work_id}/${lora.origin.character_id}/${lora.origin.outfit_set_id} · ${lora.origin.run_id || ''} e${lora.origin.epoch ?? ''}`
-        : t('외부 파일');
-      const remove = btn(t('목록에서 지우기'), () => deleteLora(lora), 'lr-danger');
+        : t('lora.external_file');
+      const remove = btn(t('lora.remove_from_list'), () => deleteLora(lora), 'lr-danger');
       remove.disabled = !!ctx.preview;
       card.append(
         head,
@@ -670,7 +646,7 @@ export function createLora(ctx) {
         el(
           'p',
           'lr-muted',
-          t('트리거: {0} · 출처: {1}', [triggers.join(', ') || t('없음'), origin]),
+          t('lora.triggers_origin', [triggers.join(', ') || t('common.missing'), origin]),
         ),
         remove,
       );
@@ -683,14 +659,14 @@ export function createLora(ctx) {
 
   function renderMain() {
     if (!state.character) {
-      main.replaceChildren(el('p', 'lr-muted', t('왼쪽에서 캐릭터를 고르세요.')));
+      main.replaceChildren(el('p', 'lr-muted', t('lora.choose_a_character_on_the_left')));
       return;
     }
     const tabs = el('div', 'lr-tabs');
     for (const [key, text] of [
-      ['dataset', t('데이터셋')],
-      ['train', t('학습')],
-      ['loras', t('LoRA 목록')],
+      ['dataset', t('lora.dataset')],
+      ['train', t('lora.training')],
+      ['loras', t('lora.registered_loras')],
     ]) {
       const tab = btn(text, () => {
         state.tab = key;

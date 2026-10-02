@@ -19,16 +19,16 @@ import {withTagComplete} from '../core/tag_input.js';
 
 const KEY = 'asset-studio-library-v2';
 const KIND_LABEL = {
-  work: t('작품'),
-  character: t('캐릭터'),
-  piece: t('조각'),
-  outfit_set: t('의상 세트'),
-  preset: t('프리셋'),
+  work: t('common.work'),
+  character: t('common.character'),
+  piece: t('prompts.piece_2'),
+  outfit_set: t('common.outfit_set'),
+  preset: t('prompts.preset'),
 };
 const PRESET_LABEL = {
-  generation: t('생성 설정'),
-  combination: t('조합 프리셋'),
-  expression_set: t('감정·동작 묶음'),
+  generation: t('common.generation_settings'),
+  combination: t('common.combination_presets'),
+  expression_set: t('prompts.expression_sets'),
 };
 const ADDRESS_FIELDS = ['scope', 'work_id', 'character_id', 'category', 'preset_type'];
 // Sidebar order of the piece folders; roles added to the definition later follow.
@@ -37,9 +37,7 @@ const RENAMABLE = ['work', 'character', 'outfit_set'];
 const MOVABLE = ['piece', 'outfit_set'];
 // Filled in by the server from the file location; never sent back.
 const DERIVED = ['category', 'role', 'bucket', 'scope', 'work_id', 'character_id'];
-const PROMPT_HELP = t(
-  '태그 하나 또는 완전한 문장 하나를 한 줄에 입력합니다. 쉼표로 이은 나열도 그대로 쓸 수 있습니다.',
-);
+const PROMPT_HELP = t('prompts.one_tag_or_one_full_sentence');
 const CODE = /^[A-Za-z0-9_-]{1,64}$/;
 
 const arr = (value) => (Array.isArray(value) ? value : []);
@@ -196,36 +194,36 @@ export function createLibrary(ctx) {
   const characterRow = elt('div', 'lib-works');
   const search = input();
   search.type = 'search';
-  search.placeholder = t('이름·코드 검색');
+  search.placeholder = t('prompts.search_name_or_code');
   const tree = elt('nav', 'lib-tree');
-  tree.setAttribute('aria-label', t('라이브러리 항목'));
+  tree.setAttribute('aria-label', t('prompts.library_item'));
   const editor = elt('div', 'lib-editor');
   const status = elt('p', 'lib-status');
   status.setAttribute('role', 'status');
   const sidebar = elt('aside', 'lib-sidebar');
   const main = elt('main', 'lib-main');
   const heading = elt('header', 'lib-heading');
-  heading.append(elt('h1', '', t('프롬프트 라이브러리')), elt('span', 'lib-heading-actions'));
+  heading.append(elt('h1', '', t('common.prompt_library')), elt('span', 'lib-heading-actions'));
   heading.lastChild.append(
-    button(t('샘플 가져오기'), importSample, 'lib-muted'),
-    button(t('생성 화면'), () => ctx.navigate?.('/jobs'), 'lib-muted'),
+    button(t('prompts.import_sample'), importSample, 'lib-muted'),
+    button(t('prompts.jobs'), () => ctx.navigate?.('/jobs'), 'lib-muted'),
   );
   const worksBar = elt('div', 'lib-works');
   worksBar.append(
-    field(t('작품'), workSelect),
-    button(t('+ 작품'), () => newEntity({kind: 'work'})),
+    field(t('common.work'), workSelect),
+    button(t('prompts.work'), () => newEntity({kind: 'work'})),
   );
   characterRow.append(
-    field(t('캐릭터'), characterSelect),
-    button(t('+ 캐릭터'), () => newEntity({kind: 'character', work_id: state.work})),
+    field(t('common.character'), characterSelect),
+    button(t('prompts.character'), () => newEntity({kind: 'character', work_id: state.work})),
   );
   sidebar.append(
     worksBar,
-    field(t('범위'), scopeBar),
+    field(t('common.scope'), scopeBar),
     characterRow,
-    field(t('검색'), search),
+    field(t('common.search'), search),
     tree,
-    button(t('휴지통'), showTrash, 'lib-muted'),
+    button(t('prompts.trash'), showTrash, 'lib-muted'),
   );
   main.append(status, editor);
   root.append(heading, sidebar, main);
@@ -297,7 +295,7 @@ export function createLibrary(ctx) {
 
   function renderWorks() {
     workSelect.replaceChildren(
-      option('', t('작품 선택')),
+      option('', t('common.choose_a_work')),
       ...state.works.map((w) => option(w.id, `${w.name || w.id} · ${w.id}`)),
     );
     workSelect.value = state.work;
@@ -385,7 +383,7 @@ export function createLibrary(ctx) {
     if (depth > 0 || !definition.level)
       box.append(
         button(
-          t('+ 조각'),
+          t('prompts.piece'),
           () => newEntity({kind: 'piece', ...location, category: node.path}),
           'lib-add',
         ),
@@ -393,7 +391,7 @@ export function createLibrary(ctx) {
     else
       box.append(
         button(
-          t('+ 새 하위 분류에 조각'),
+          t('prompts.piece_in_a_new_subcategory'),
           () => newEntity({kind: 'piece', ...location, category: `${node.path}/`}),
           'lib-add',
         ),
@@ -403,7 +401,7 @@ export function createLibrary(ctx) {
     tree.replaceChildren();
     const drafts = allDrafts();
     if (drafts.length) {
-      const box = group(tree, 'drafts', t('저장되지 않은 초안 ({0})', [drafts.length]), true);
+      const box = group(tree, 'drafts', t('prompts.unsaved_draft_2', [drafts.length]), true);
       for (const {selection, draft} of drafts)
         addItem(
           box,
@@ -412,23 +410,23 @@ export function createLibrary(ctx) {
         );
     }
     if (!state.catalog) {
-      tree.append(elt('p', 'lib-empty', t('불러오는 중입니다.')));
+      tree.append(elt('p', 'lib-empty', t('prompts.loading')));
       return;
     }
     const location = viewLocation();
     if (location.scope !== 'global' && !state.work) {
-      tree.append(elt('p', 'lib-empty', t('작품을 선택하거나 새 작품을 만드세요.')));
+      tree.append(elt('p', 'lib-empty', t('prompts.choose_a_work_or_create_a')));
       return;
     }
     if (location.scope === 'character' && !location.character_id) {
-      tree.append(elt('p', 'lib-empty', t('캐릭터가 없습니다. 새 캐릭터를 만드세요.')));
+      tree.append(elt('p', 'lib-empty', t('prompts.no_characters_create_one')));
       return;
     }
     if (location.scope === 'work')
       addItem(
         tree,
         {kind: 'work', id: state.work},
-        t('작품 정보 · {0}', [state.catalog.work?.name || state.work]),
+        t('prompts.work_2', [state.catalog.work?.name || state.work]),
         state.catalog.work,
       );
     if (location.scope === 'character') {
@@ -436,7 +434,7 @@ export function createLibrary(ctx) {
       addItem(
         tree,
         {kind: 'character', work_id: state.work, id: character.id},
-        t('외형 · {0} · {1}', [character.name || character.id, character.id]),
+        t('prompts.appearance', [character.name || character.id, character.id]),
         character,
       );
     }
@@ -444,7 +442,7 @@ export function createLibrary(ctx) {
     const setBox = group(
       tree,
       `${identity({kind: 'sets', ...location})}`,
-      t('의상 세트 ({0})', [sets.length]),
+      t('prompts.outfit_set_2', [sets.length]),
     );
     for (const outfitSet of sets)
       if (matches(outfitSet.name, outfitSet.id))
@@ -456,7 +454,11 @@ export function createLibrary(ctx) {
         );
     if (setBox.querySelector('.lib-item.active')) setBox.open = true;
     setBox.append(
-      button(t('+ 의상 세트'), () => newEntity({kind: 'outfit_set', ...location}), 'lib-add'),
+      button(
+        t('prompts.outfit_set'),
+        () => newEntity({kind: 'outfit_set', ...location}),
+        'lib-add',
+      ),
     );
     const pieces = recordsAt(location, 'pieces');
     const roles = Object.keys(categories().roles);
@@ -488,20 +490,17 @@ export function createLibrary(ctx) {
 
   /** Import a bundled sample as a new work and open it. */
   async function importSample() {
-    if (ctx.preview) return ctx.notify(t('미리보기 모드에서는 저장할 수 없습니다.'), true);
+    if (ctx.preview) return ctx.notify(t('common.saving_is_off_in_preview_mode'), true);
     try {
       const sample = (await ctx.api('/api/samples')).samples[0];
       if (!sample) return;
-      const question = t('샘플 "{0}"을 새 작품으로 가져올까요?\n{1}', [
-        sample.name,
-        sample.description,
-      ]);
+      const question = t('prompts.import_the_sample_as_a_new', [sample.name, sample.description]);
       if (!window.confirm(question)) return;
       const result = await ctx.api('/api/samples/import', {id: sample.id});
       ctx.onLibraryChanged?.();
       await fetchWorks();
       await changeWork(result.work_id);
-      ctx.notify(t('샘플을 {0} 작품으로 가져왔습니다.', [result.work_id]));
+      ctx.notify(t('prompts.imported_the_sample_as_work', [result.work_id]));
     } catch (error) {
       ctx.notify(error.message, true);
     }
@@ -534,7 +533,7 @@ export function createLibrary(ctx) {
       await fetchCatalog();
       if (selection) await choose(selection);
     } catch (error) {
-      report(t('라이브러리를 불러오지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_load_the_library', [asError(error)]), true);
     }
     rememberView();
   }
@@ -580,10 +579,7 @@ export function createLibrary(ctx) {
       if (!state.draft) state.draft = {...clone(data.entity), baseRevision: data.revision};
       else if (state.draft.baseRevision !== data.revision) {
         state.conflict = true;
-        report(
-          t('저장된 항목이 변경되었습니다. 현재 초안은 유지됩니다. 비교 후 저장하세요.'),
-          true,
-        );
+        report(t('prompts.the_saved_item_changed_your_draft'), true);
       }
       renderEditor();
     } catch (error) {
@@ -591,7 +587,7 @@ export function createLibrary(ctx) {
       // Without a draft there is nothing to show for a record that no longer exists.
       if (!state.draft) state.selected = null;
       renderEditor();
-      report(t('항목을 불러오지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_load_the_item', [asError(error)]), true);
     }
   }
 
@@ -605,47 +601,37 @@ export function createLibrary(ctx) {
       kind === 'preset'
         ? PRESET_LABEL[base.preset_type]
         : kind === 'piece'
-          ? t('조각')
+          ? t('prompts.piece_2')
           : KIND_LABEL[kind];
     const panel = elt('div', 'lib-new');
-    panel.append(elt('h2', '', t('새 {0}', [title])));
+    panel.append(elt('h2', '', t('prompts.new', [title])));
     if (kind === 'piece' || kind === 'outfit_set')
-      panel.append(elt('p', 'lib-path', t('범위: {0}', [scopeLabel(base)])));
+      panel.append(elt('p', 'lib-path', t('prompts.scope', [scopeLabel(base)])));
     const category = input(base.category || '');
     const id = input();
-    id.placeholder = t('영문·숫자·_·-');
+    id.placeholder = t('prompts.letters_digits_and');
     const name = input();
-    name.placeholder = t('이름');
+    name.placeholder = t('common.name');
     if (kind === 'piece')
       panel.append(
-        field(
-          t('분류 경로'),
-          category,
-          t(
-            '폴더 경로입니다. 예: outfit/top, expression/sfw/daily. 첫 폴더가 역할을 정하고, 더 깊은 폴더는 정리용입니다.',
-          ),
-        ),
+        field(t('prompts.category_path'), category, t('prompts.a_folder_path_e_g_outfit')),
       );
     panel.append(
       field(
-        t('코드'),
+        t('prompts.code'),
         id,
-        kind === 'piece'
-          ? t(
-              '같은 분류 안에서 고유해야 합니다. 의상 조각은 세트 코드와 같게 두면 찾기 쉽습니다. 감정은 세 자리 숫자입니다.',
-            )
-          : '',
+        kind === 'piece' ? t('prompts.must_be_unique_within_its_category') : '',
       ),
-      field(t('이름'), name),
+      field(t('common.name'), name),
     );
     panel.append(
       button(
-        t('초안 만들기'),
+        t('prompts.make_a_draft'),
         () => {
           const entityId = id.value.trim();
           const entityName = name.value.trim();
           if (!CODE.test(entityId) || !entityName) {
-            report(t('코드와 이름을 확인하세요.'), true);
+            report(t('prompts.check_the_code_and_name'), true);
             return;
           }
           const selection = {...base, id: entityId};
@@ -654,16 +640,11 @@ export function createLibrary(ctx) {
             selection.category = category.value.trim().replace(/^\/+|\/+$/g, '');
             const parsed = parseCategory(categories(), selection.category);
             if (!parsed) {
-              report(
-                t(
-                  '분류 경로를 확인하세요. 첫 폴더는 정의된 분류여야 하고, 하위 분류가 필요한 분류도 있습니다.',
-                ),
-                true,
-              );
+              report(t('prompts.check_the_category_path_the_first'), true);
               return;
             }
             if (parsed.role === 'expression' && !/^\d{3}$/.test(entityId)) {
-              report(t('감정 코드는 세 자리 숫자입니다.'), true);
+              report(t('prompts.expression_codes_are_three_digits'), true);
               return;
             }
             Object.assign(payload, {prompt: [], negative_prompt: []});
@@ -696,7 +677,7 @@ export function createLibrary(ctx) {
   function update(prop, value) {
     state.draft[prop] = value;
     writeDraft();
-    dirtyBadge.textContent = t('저장되지 않은 초안');
+    dirtyBadge.textContent = t('prompts.unsaved_draft');
   }
   function textControl(prop, label, help = PROMPT_HELP, rows = 6) {
     const node = textarea(lines(state.draft[prop]), rows);
@@ -704,7 +685,7 @@ export function createLibrary(ctx) {
     const control = field(label, withTagComplete(node, ctx.api, null, {separator: ''}), help);
     control.append(
       button(
-        t('줄 정리'),
+        t('prompts.tidy_lines'),
         () => {
           const formatted = formatPromptLines(node.value);
           if (formatted === node.value) return;
@@ -729,27 +710,30 @@ export function createLibrary(ctx) {
       3,
     );
     node.addEventListener('input', () => update('notes', node.value));
-    return field(t('메모 (생성에 사용되지 않음)'), node);
+    return field(t('prompts.notes_not_used_for_generation'), node);
   }
   function pieceFields(s, d) {
     const parsed = parseCategory(categories(), s.category);
     const negativeTarget = parsed?.bucket === 'common/negative';
     editor.append(
-      textControl('prompt', negativeTarget ? t('제외 프롬프트에 넣을 내용') : t('긍정 프롬프트')),
+      textControl(
+        'prompt',
+        negativeTarget ? t('prompts.text_for_the_negative_prompt') : t('common.positive_prompt'),
+      ),
     );
-    if (!negativeTarget) editor.append(textControl('negative_prompt', t('제외 프롬프트')));
+    if (!negativeTarget) editor.append(textControl('negative_prompt', t('common.negative_prompt')));
     if (parsed?.role === 'expression') {
       const choices = reachable(s, 'composition').map((piece) => [
         piece.id,
         `${piece.name || piece.id} · ${piece.id} (${scopeLabel(piece)})`,
       ]);
-      const composition = select([['', t('없음')], ...choices], d.composition_id || '');
+      const composition = select([['', t('common.missing')], ...choices], d.composition_id || '');
       composition.addEventListener('change', () => update('composition_id', composition.value));
       editor.append(
         field(
-          t('기본 구도'),
+          t('prompts.default_composition'),
           composition,
-          t('작업 메뉴에서 구도를 따로 고르지 않으면 이 구도를 씁니다.'),
+          t('prompts.used_when_no_composition_is_chosen'),
         ),
       );
     }
@@ -774,11 +758,9 @@ export function createLibrary(ctx) {
       }
       editor.append(
         field(
-          t('기본 체크 제안'),
+          t('prompts.suggested_slots'),
           box,
-          t(
-            '작업 메뉴에서 이 구도를 고르면 체크되는 의상 부위입니다. 하나도 체크하지 않으면 전체를 씁니다.',
-          ),
+          t('prompts.outfit_slots_ticked_when_this_composition'),
         ),
       );
     }
@@ -796,8 +778,8 @@ export function createLibrary(ctx) {
         `${piece.name || piece.id} · ${piece.id} (${SCOPE_LABELS[piece.scope]})`,
       ]);
       if (current && !choices.some(([value]) => value === current))
-        choices.unshift([current, t('{0} · 찾을 수 없음', [slots[slot].id])]);
-      const picker = select([['', t('— 없음 —')], ...choices], current);
+        choices.unshift([current, t('prompts.not_found', [slots[slot].id])]);
+      const picker = select([['', t('prompts.none')], ...choices], current);
       picker.addEventListener('change', () => {
         const next = {...state.draft.slots};
         if (picker.value) {
@@ -812,7 +794,7 @@ export function createLibrary(ctx) {
       if (chosen) {
         row.append(
           button(
-            t('조각 열기'),
+            t('prompts.open_piece'),
             () =>
               choose({
                 kind: 'piece',
@@ -829,7 +811,7 @@ export function createLibrary(ctx) {
       } else
         row.append(
           button(
-            t('+ 새 조각'),
+            t('prompts.new_piece'),
             () =>
               newEntity({
                 kind: 'piece',
@@ -844,19 +826,13 @@ export function createLibrary(ctx) {
       table.append(row);
     }
     editor.append(
-      field(
-        t('부위별 조각'),
-        table,
-        t(
-          '이 세트가 가리키는 조각입니다. 생성할 때 어느 부위를 넣을지는 작업 메뉴에서 체크합니다.',
-        ),
-      ),
+      field(t('prompts.pieces_by_slot'), table, t('prompts.the_pieces_this_set_points_to')),
     );
     editor.append(
       textControl(
         'negative_prompt',
-        t('세트 제외 프롬프트'),
-        t('어느 부위를 고르든 항상 적용됩니다.'),
+        t('prompts.set_negative_prompt'),
+        t('prompts.always_applied_whatever_slots_are_chosen'),
         4,
       ),
     );
@@ -868,41 +844,31 @@ export function createLibrary(ctx) {
         pieces: arr(state.draft.props?.pieces),
       }),
     );
-    editor.append(
-      field(
-        t('소품 메모'),
-        props,
-        t('전신·전투 장면에서만 쓰는 소품 등. 생성에는 쓰이지 않습니다.'),
-      ),
-    );
+    editor.append(field(t('prompts.props_note'), props, t('prompts.props_used_only_in_full_body')));
   }
   function moveControl(s) {
     const box = elt('details', 'lib-move');
-    box.append(elt('summary', '', t('범위 옮기기')));
-    const targets = [['global', t('전역')]];
+    box.append(elt('summary', '', t('prompts.move_scope')));
+    const targets = [['global', t('common.global')]];
     if (state.work) {
-      targets.push([`work|${state.work}`, t('{0} 공용', [state.work])]);
+      targets.push([`work|${state.work}`, t('common.shared_in', [state.work])]);
       for (const character of characters())
         targets.push([
           `character|${state.work}|${character.id}`,
-          t('캐릭터 · {0} · {1}', [character.name || character.id, character.id]),
+          t('prompts.character_2', [character.name || character.id, character.id]),
         ]);
     }
     const current = [s.scope, s.work_id, s.character_id].filter(Boolean).join('|');
     const target = select(targets, current);
     const category = input(s.category || '');
-    box.append(field(t('옮길 범위'), target));
+    box.append(field(t('prompts.target_scope'), target));
     if (s.kind === 'piece')
-      box.append(field(t('분류 경로'), category, t('같은 역할 안에서 폴더도 바꿀 수 있습니다.')));
+      box.append(
+        field(t('prompts.category_path'), category, t('prompts.you_can_also_change_the_folder')),
+      );
     box.append(
-      elt(
-        'p',
-        'lib-hint',
-        t(
-          '이 항목을 가리키는 의상 세트의 참조는 함께 고쳐집니다. 옮긴 뒤 보이지 않게 되는 참조가 있으면 옮기지 않습니다.',
-        ),
-      ),
-      button(t('옮기기'), () => move(s, target.value, category.value.trim()), 'lib-primary'),
+      elt('p', 'lib-hint', t('prompts.outfit_sets_that_point_to_this')),
+      button(t('prompts.move'), () => move(s, target.value, category.value.trim()), 'lib-primary'),
     );
     return box;
   }
@@ -911,11 +877,11 @@ export function createLibrary(ctx) {
     const s = state.selected;
     const d = state.draft;
     if (!s) {
-      editor.append(elt('p', 'lib-empty', t('왼쪽에서 항목을 선택하세요.')));
+      editor.append(elt('p', 'lib-empty', t('prompts.select_an_item_on_the_left')));
       return;
     }
     if (!d) {
-      editor.append(elt('p', 'lib-empty', t('항목을 불러오는 중입니다.')));
+      editor.append(elt('p', 'lib-empty', t('prompts.loading_the_item')));
       return;
     }
     const top = elt('div', 'lib-editor-head');
@@ -923,27 +889,28 @@ export function createLibrary(ctx) {
       s.kind === 'preset'
         ? PRESET_LABEL[s.preset_type]
         : s.kind === 'character'
-          ? t('캐릭터 외형')
+          ? t('prompts.character_appearance')
           : KIND_LABEL[s.kind];
     top.append(elt('h2', '', `${title} · ${s.id}`), dirtyBadge);
-    dirtyBadge.textContent = readDraft(s) ? t('저장되지 않은 초안') : '';
+    dirtyBadge.textContent = readDraft(s) ? t('prompts.unsaved_draft') : '';
     editor.append(top);
     if (MOVABLE.includes(s.kind))
       editor.append(
         elt(
           'p',
           'lib-path',
-          t('범위: {0}{1}', [
+          t('prompts.scope_2', [
             scopeLabel(s),
-            s.kind === 'piece' ? t(' · 분류: {0}', [s.category]) : '',
+            s.kind === 'piece' ? t('prompts.category', [s.category]) : '',
           ]),
         ),
       );
-    if (s.kind === 'character') editor.append(elt('p', 'lib-path', t('작품: {0}', [s.work_id])));
+    if (s.kind === 'character')
+      editor.append(elt('p', 'lib-path', t('prompts.work_3', [s.work_id])));
     if (state.conflict && state.record) {
       const comparison = elt('details', 'lib-conflict');
       comparison.append(
-        elt('summary', '', t('저장된 최신 내용 보기 · 현재 초안은 그대로 유지됩니다')),
+        elt('summary', '', t('prompts.show_the_latest_saved_version_your')),
         elt('pre', '', JSON.stringify(state.record, null, 2)),
       );
       editor.append(comparison);
@@ -951,51 +918,37 @@ export function createLibrary(ctx) {
     if (RENAMABLE.includes(s.kind)) {
       const id = input(d.id);
       id.addEventListener('input', () => update('id', id.value.trim()));
-      editor.append(
-        field(
-          t('코드'),
-          id,
-          t(
-            '바꾸면 이전 코드는 다시 쓸 수 없습니다. 이미 만든 이미지는 이전 코드 폴더에 남습니다.',
-          ),
-        ),
-      );
+      editor.append(field(t('prompts.code'), id, t('prompts.after_a_change_the_old_code')));
     }
     const name = input(safe(d.name));
     name.addEventListener('input', () => update('name', name.value));
-    editor.append(field(t('이름'), name));
+    editor.append(field(t('common.name'), name));
     if (['work', 'character', 'piece', 'outfit_set'].includes(s.kind)) {
       const family = select(Object.entries(MODEL_FAMILY_LABELS), modelFamily(d));
       family.addEventListener('change', () => update('model_family', family.value));
       editor.append(
-        field(
-          t('모델 계열'),
-          family,
-          t(
-            '이 프롬프트를 어느 모델용으로 썼는지 표시합니다. 작업 메뉴에서 같은 계열과 공용만 보입니다.',
-          ),
-        ),
+        field(t('common.model_family'), family, t('prompts.marks_which_model_this_prompt_was')),
       );
     }
     if (s.kind === 'work') {
       editor.append(
-        textControl('prompt', t('작품 공통 긍정 프롬프트')),
-        textControl('negative_prompt', t('작품 공통 제외 프롬프트')),
+        textControl('prompt', t('prompts.work_wide_positive_prompt')),
+        textControl('negative_prompt', t('prompts.work_wide_negative_prompt')),
       );
     }
     if (s.kind === 'character') {
       editor.append(
-        textControl('prompt', t('외형 프롬프트')),
-        textControl('negative_prompt', t('제외 프롬프트')),
+        textControl('prompt', t('prompts.appearance_prompt')),
+        textControl('negative_prompt', t('common.negative_prompt')),
       );
       const character = characterOf(state.catalog, s.id);
       const sets = visibleOutfitSets(state.catalog, character).map((item) => [
         item.id,
         `${item.name || item.id} · ${item.id} (${SCOPE_LABELS[item.scope]})`,
       ]);
-      const chooser = select([['', t('없음')], ...sets], d.default_outfit || '');
+      const chooser = select([['', t('common.missing')], ...sets], d.default_outfit || '');
       chooser.addEventListener('change', () => update('default_outfit', chooser.value));
-      editor.append(field(t('기본 의상 세트'), chooser));
+      editor.append(field(t('prompts.default_outfit_set'), chooser));
     }
     if (s.kind === 'piece') pieceFields(s, d);
     if (s.kind === 'outfit_set') outfitSetFields(s, d);
@@ -1003,8 +956,8 @@ export function createLibrary(ctx) {
       editor.append(
         jsonControl(
           'settings',
-          t('생성 설정 JSON'),
-          t('모델·LoRA·샘플러 등. 작업 메뉴에서 저장하는 편이 쉽습니다.'),
+          t('prompts.generation_settings_json'),
+          t('prompts.model_loras_sampler_and_so_on'),
           {},
         ),
       );
@@ -1013,26 +966,20 @@ export function createLibrary(ctx) {
       editor.append(
         jsonControl(
           'expressions',
-          t('감정·동작 목록 JSON'),
-          t('[{"id": "001"}] 형식의 배열입니다.'),
+          t('prompts.expression_list_json'),
+          t('prompts.an_array_like'),
           [],
         ),
       );
     if (s.preset_type === 'combination')
-      editor.append(
-        elt(
-          'p',
-          'lib-hint',
-          t('조합 프리셋의 내용은 작업 메뉴에서 저장합니다. 여기서는 이름만 고칩니다.'),
-        ),
-      );
+      editor.append(elt('p', 'lib-hint', t('prompts.a_combination_preset_s_content_is')));
     editor.append(notesControl());
     const controls = elt('div', 'lib-actions');
     controls.append(
-      button(t('저장'), save, 'lib-primary'),
-      button(t('저장된 내용 복원'), restoreSaved, 'lib-muted'),
+      button(t('common.save'), save, 'lib-primary'),
+      button(t('prompts.restore_saved_version'), restoreSaved, 'lib-muted'),
     );
-    if (!d.isNew) controls.append(button(t('삭제'), remove, 'lib-danger'));
+    if (!d.isNew) controls.append(button(t('common.delete'), remove, 'lib-danger'));
     editor.append(controls);
     if (!d.isNew && MOVABLE.includes(s.kind)) editor.append(moveControl(s));
   }
@@ -1057,7 +1004,7 @@ export function createLibrary(ctx) {
       try {
         payload[prop] = JSON.parse(payload[`${prop}Text`]);
       } catch {
-        throw new Error(t('{0} JSON 형식을 확인하세요.', [prop]));
+        throw new Error(t('prompts.check_the_json', [prop]));
       }
       delete payload[`${prop}Text`];
     }
@@ -1080,11 +1027,11 @@ export function createLibrary(ctx) {
       return;
     }
     if (!safe(payload.name).trim()) {
-      report(t('이름을 입력하세요.'), true);
+      report(t('prompts.enter_a_name'), true);
       return;
     }
     if (!CODE.test(payload.id || '')) {
-      report(t('코드는 영문·숫자·_·-만 사용할 수 있습니다.'), true);
+      report(t('prompts.codes_may_use_only_letters_digits'), true);
       return;
     }
     state.busy = true;
@@ -1107,7 +1054,7 @@ export function createLibrary(ctx) {
       await refresh();
       rememberView();
       renderEditor();
-      report(t('저장했습니다.'));
+      report(t('common.saved'));
     } catch (error) {
       if (isConflict(error)) {
         state.conflict = true;
@@ -1120,7 +1067,7 @@ export function createLibrary(ctx) {
           /* The item may have been deleted or the code is taken. */
         }
       }
-      report(t('저장하지 못했습니다: {0}', [asError(error)]), true);
+      report(t('common.could_not_save', [asError(error)]), true);
     } finally {
       state.busy = false;
     }
@@ -1137,7 +1084,7 @@ export function createLibrary(ctx) {
       return;
     }
     await choose(s);
-    report(t('저장된 내용을 다시 불러왔습니다.'));
+    report(t('prompts.reloaded_the_saved_version'));
   }
   async function move(s, targetValue, category) {
     if (state.busy) return;
@@ -1146,11 +1093,7 @@ export function createLibrary(ctx) {
     if (work_id) to.work_id = work_id;
     if (character_id) to.character_id = character_id;
     if (s.kind === 'piece' && category) to.category = category.replace(/^\/+|\/+$/g, '');
-    if (
-      readDraft(s) &&
-      !window.confirm(t('저장하지 않은 초안이 있습니다. 초안을 버리고 옮길까요?'))
-    )
-      return;
+    if (readDraft(s) && !window.confirm(t('prompts.there_is_an_unsaved_draft_discard'))) return;
     state.busy = true;
     try {
       const data = await ctx.api(endpoint(s.kind, 'move'), {
@@ -1168,9 +1111,9 @@ export function createLibrary(ctx) {
       await refresh();
       rememberView();
       renderEditor();
-      report(t('{0}(으)로 옮겼습니다.', [scopeLabel(selection)]));
+      report(t('prompts.moved_to', [scopeLabel(selection)]));
     } catch (error) {
-      report(t('옮기지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_move', [asError(error)]), true);
     } finally {
       state.busy = false;
     }
@@ -1179,9 +1122,9 @@ export function createLibrary(ctx) {
     const s = state.selected;
     if (!s || state.busy) return;
     const warning = ['work', 'character'].includes(s.kind)
-      ? t('하위 항목도 휴지통으로 이동합니다. 기존 생성 결과물은 유지됩니다.')
-      : t('항목을 휴지통으로 이동합니다. 기존 생성 결과물은 유지됩니다.');
-    if (!window.confirm(t('{0} {1} 삭제\n{2}', [KIND_LABEL[s.kind], s.id, warning]))) return;
+      ? t('prompts.items_inside_it_go_to_the')
+      : t('prompts.moves_the_item_to_the_trash');
+    if (!window.confirm(t('prompts.delete', [KIND_LABEL[s.kind], s.id, warning]))) return;
     state.busy = true;
     try {
       await ctx.api(endpoint(s.kind, 'delete'), {
@@ -1201,9 +1144,9 @@ export function createLibrary(ctx) {
       ctx.onLibraryChanged?.();
       rememberView();
       renderEditor();
-      report(t('휴지통으로 이동했습니다.'));
+      report(t('prompts.moved_to_the_trash'));
     } catch (error) {
-      report(t('삭제하지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_delete', [asError(error)]), true);
     } finally {
       state.busy = false;
     }
@@ -1214,14 +1157,14 @@ export function createLibrary(ctx) {
     try {
       items = arr((await ctx.api('/api/library/trash')).items);
     } catch (error) {
-      report(t('휴지통을 불러오지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_load_the_trash', [asError(error)]), true);
       return;
     }
     Object.assign(state, {selected: null, draft: null});
     renderTree();
     const panel = elt('div', 'lib-trash');
-    panel.append(elt('h2', '', t('휴지통')));
-    if (!items.length) panel.append(elt('p', 'lib-empty', t('휴지통이 비어 있습니다.')));
+    panel.append(elt('h2', '', t('prompts.trash')));
+    if (!items.length) panel.append(elt('p', 'lib-empty', t('prompts.the_trash_is_empty')));
     for (const item of items) {
       const row = elt('div', 'lib-trash-row');
       const kind =
@@ -1235,15 +1178,15 @@ export function createLibrary(ctx) {
           `${kind} · ${item.name || item.entity_id} · ${item.original_path} · ${item.deleted_at || ''}`,
         ),
         button(
-          t('복원'),
+          t('prompts.restore'),
           async () => {
             try {
               await ctx.api('/api/library/restore', {trash_id: item.id});
               await refresh();
-              report(t('복원했습니다.'));
+              report(t('prompts.restored'));
               await showTrash();
             } catch (error) {
-              report(t('복원하지 못했습니다: {0}', [asError(error)]), true);
+              report(t('prompts.could_not_restore', [asError(error)]), true);
             }
           },
           'lib-muted',
@@ -1291,7 +1234,7 @@ export function createLibrary(ctx) {
       if (remembered?.selected && !params.get('work')) await choose(remembered.selected);
       else renderEditor();
     } catch (error) {
-      report(t('라이브러리를 불러오지 못했습니다: {0}', [asError(error)]), true);
+      report(t('prompts.could_not_load_the_library', [asError(error)]), true);
     }
   }
   function leave() {

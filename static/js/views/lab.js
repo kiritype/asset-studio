@@ -11,21 +11,21 @@ const HANDOFF_KEY = 'asset-studio-lab-handoff';
 const POLL_MS = 2500;
 const MAX_JOBS = 48;
 const SWEEPS = [
-  ['', t('없음 · 시드만 비교')],
+  ['', t('lab.none_compare_seeds_only')],
   ['cfg', 'CFG'],
   ['steps', 'Steps'],
-  ['sampler', t('샘플러')],
-  ['scheduler', t('스케줄러')],
+  ['sampler', t('common.sampler')],
+  ['scheduler', t('common.scheduler')],
   ['clip_skip', 'CLIP skip'],
-  ['lora_strength', t('LoRA 강도')],
+  ['lora_strength', t('lab.lora_strength')],
 ];
 const SWEEP_HINTS = {
-  cfg: t('예: 3, 4.5, 6'),
-  steps: t('예: 20, 28, 36'),
-  sampler: t('쉼표로 구분, 비우면 목록 전체'),
-  scheduler: t('쉼표로 구분, 비우면 목록 전체'),
-  clip_skip: t('예: 1, 2'),
-  lora_strength: t('예: 0.4, 0.7, 1.0'),
+  cfg: t('lab.e_g_3_4_5_6'),
+  steps: t('lab.e_g_20_28_36'),
+  sampler: t('lab.comma_separated_empty_means_the_whole'),
+  scheduler: t('lab.comma_separated_empty_means_the_whole'),
+  clip_skip: t('lab.e_g_1_2'),
+  lora_strength: t('lab.e_g_0_4_0_7'),
 };
 const DONE = ['completed', 'failed', 'cancelled', 'interrupted'];
 
@@ -93,14 +93,8 @@ export function createLab(ctx) {
   const view = el('div', 'lab-view');
   const header = el('header', 'lab-header');
   header.append(
-    el('h1', '', t('실험실')),
-    el(
-      'p',
-      '',
-      t(
-        '같은 프롬프트를 여러 시드나 설정값으로 생성해 비교합니다. 결과는 outputs/_lab에 저장됩니다.',
-      ),
-    ),
+    el('h1', '', t('common.lab')),
+    el('p', '', t('lab.generate_one_prompt_with_several_seeds')),
   );
   root.append(header, form, view);
 
@@ -132,7 +126,7 @@ export function createLab(ctx) {
   const sweepLora = el('select');
   const sweepRow = el('div', 'lab-row');
   const totalLine = el('p', 'lab-total');
-  const runButton = btn(t('생성'), () => run(), 'lab-primary');
+  const runButton = btn(t('common.generate'), () => run(), 'lab-primary');
 
   positive.value = '';
   // Replace one tag everywhere it appears, keeping the spacing around it.
@@ -171,14 +165,14 @@ export function createLab(ctx) {
   function renderTotal() {
     const total = totals();
     totalLine.textContent = state.draft.sweep.key
-      ? t('시드 {0}개 × 값 {1}개 = {2}장', [state.draft.count, total.variants, total.jobs])
-      : t('시드 {0}개 = {1}장', [state.draft.count, total.jobs]);
-    runButton.textContent = t('{0}장 생성', [total.jobs]);
+      ? t('lab.seeds_values_images', [state.draft.count, total.variants, total.jobs])
+      : t('lab.seeds_images', [state.draft.count, total.jobs]);
+    runButton.textContent = t('lab.generate', [total.jobs]);
     const sweepBad = state.draft.sweep.key && total.variants < 2;
     runButton.disabled =
       state.busy || !!ctx.preview || total.jobs < 1 || total.jobs > MAX_JOBS || sweepBad;
-    if (total.jobs > MAX_JOBS) totalLine.textContent += t(' · 최대 {0}장', [MAX_JOBS]);
-    if (sweepBad) totalLine.textContent += t(' · 비교할 값을 2개 이상 입력하세요');
+    if (total.jobs > MAX_JOBS) totalLine.textContent += t('lab.up_to', [MAX_JOBS]);
+    if (sweepBad) totalLine.textContent += t('lab.enter_at_least_two_values_to');
   }
   function renderSweep() {
     const {key} = state.draft.sweep;
@@ -210,7 +204,7 @@ export function createLab(ctx) {
     });
   }
   function renderPresets() {
-    presetSelect.replaceChildren(el('option', '', t('프리셋 불러오기')));
+    presetSelect.replaceChildren(el('option', '', t('lab.load_a_preset')));
     presetSelect.firstChild.value = '';
     for (const preset of state.presets) {
       const option = el('option', '', `${preset.name || preset.id} · ${preset.id}`);
@@ -229,21 +223,21 @@ export function createLab(ctx) {
     saveDraft();
     renderSettings();
     renderSweep();
-    ctx.notify(t('프리셋 {0}의 생성 설정을 불러왔습니다.', [preset.name || preset.id]));
+    ctx.notify(t('lab.loaded_the_generation_settings_of_preset', [preset.name || preset.id]));
   });
   async function savePreset() {
-    if (ctx.preview) return ctx.notify(t('미리보기 모드에서는 저장할 수 없습니다.'), true);
+    if (ctx.preview) return ctx.notify(t('common.saving_is_off_in_preview_mode'), true);
     const used = new Set(state.presets.map((p) => p.id));
     let suggestion = '';
     for (let i = 1; i < 1000 && !suggestion; i++) {
       const id = `G${String(i).padStart(3, '0')}`;
       if (!used.has(id)) suggestion = id;
     }
-    const id = window.prompt(t('새 생성 프리셋 코드 (영문·숫자·_·-)'), suggestion)?.trim();
+    const id = window.prompt(t('lab.code_for_the_new_generation_preset'), suggestion)?.trim();
     if (!id) return;
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(id) || used.has(id))
-      return ctx.notify(t('쓸 수 없는 코드이거나 이미 있는 프리셋입니다.'), true);
-    const name = window.prompt(t('프리셋 이름'), id)?.trim();
+      return ctx.notify(t('lab.the_code_is_invalid_or_the'), true);
+    const name = window.prompt(t('common.preset_name'), id)?.trim();
     if (!name) return;
     const settings = copy(state.draft.settings);
     delete settings.seed;
@@ -256,7 +250,7 @@ export function createLab(ctx) {
       });
       ctx.onLibraryChanged?.();
       await loadPresets();
-      ctx.notify(t('생성 프리셋 {0}을 저장했습니다.', [name]));
+      ctx.notify(t('lab.saved_generation_preset', [name]));
     } catch (error) {
       ctx.notify(error.message, true);
     }
@@ -265,24 +259,24 @@ export function createLab(ctx) {
   function buildForm() {
     const promptHead = el('div', 'lab-row lab-between');
     promptHead.append(
-      el('h2', '', t('프롬프트')),
-      btn(t('긍정 태그 확인'), () => checkTags(positive, 'positive'), 'lab-muted'),
+      el('h2', '', t('lab.prompt')),
+      btn(t('lab.check_positive_tags'), () => checkTags(positive, 'positive'), 'lab-muted'),
     );
     const negativeHead = el('div', 'lab-row lab-between');
     negativeHead.append(
-      el('h3', '', t('제외 프롬프트')),
-      btn(t('제외 태그 확인'), () => checkTags(negative, 'negative'), 'lab-muted'),
+      el('h3', '', t('common.negative_prompt')),
+      btn(t('lab.check_negative_tags'), () => checkTags(negative, 'negative'), 'lab-muted'),
     );
     const settingsHead = el('div', 'lab-row lab-between');
-    settingsHead.append(el('h2', '', t('생성 설정')), presetSelect);
+    settingsHead.append(el('h2', '', t('common.generation_settings')), presetSelect);
     const presetRow = el('div', 'lab-row');
-    presetRow.append(btn(t('현재 설정을 프리셋으로 저장'), savePreset, 'lab-muted'));
+    presetRow.append(btn(t('lab.save_current_settings_as_a_preset'), savePreset, 'lab-muted'));
     sweepRow.append(
-      field(t('바꿔 볼 값'), sweepKey),
+      field(t('lab.value_to_vary'), sweepKey),
       field('LoRA', sweepLora),
-      field(t('값 목록'), sweepValues),
+      field(t('lab.values'), sweepValues),
     );
-    const compareHead = el('h2', '', t('비교'));
+    const compareHead = el('h2', '', t('lab.result'));
     form.replaceChildren(
       sourceLine,
       promptHead,
@@ -300,7 +294,7 @@ export function createLab(ctx) {
       settingsBox,
       presetRow,
       compareHead,
-      field(t('시드 수'), countInput, t('시드를 고정하면 그 값부터 1씩 늘립니다. -1이면 무작위.')),
+      field(t('lab.seeds'), countInput, t('lab.a_fixed_seed_counts_up_by')),
       sweepRow,
       totalLine,
       runButton,
@@ -332,7 +326,7 @@ export function createLab(ctx) {
     countInput.value = String(state.draft.count || 1);
     const from = state.source;
     sourceLine.textContent = from
-      ? t('가져온 곳: {0}', [
+      ? t('lab.from', [
           from.label ||
             [from.work_id, from.character_id, from.outfit_id, from.expression_id]
               .filter(Boolean)
@@ -366,7 +360,7 @@ export function createLab(ctx) {
         sweep,
         source: state.source,
       });
-      ctx.notify(t('{0}장을 대기열에 넣었습니다.', [result.jobs.length]));
+      ctx.notify(t('lab.queued_images', [result.jobs.length]));
       ctx.onQueueChanged?.();
       state.group = result.lab_group;
       // A gallery image stays the reference; otherwise the first result becomes it.
@@ -397,7 +391,7 @@ export function createLab(ctx) {
   const picture = (job) =>
     job?.image_url && {
       url: job.image_url,
-      label: [tr(job.lab_variant), t('시드 {0}', [job.seed])].filter(Boolean).join(' · '),
+      label: [tr(job.lab_variant), t('lab.seed', [job.seed])].filter(Boolean).join(' · '),
       job,
     };
 
@@ -405,7 +399,11 @@ export function createLab(ctx) {
     const box = el('figure', 'lab-figure');
     if (!side) {
       box.append(
-        el('div', 'lab-empty', title === t('기준') ? t('기준 이미지 없음') : t('결과 대기 중')),
+        el(
+          'div',
+          'lab-empty',
+          title === t('lab.reference') ? t('lab.no_reference_image') : t('lab.waiting_for_results'),
+        ),
       );
     } else {
       const image = el('img');
@@ -432,7 +430,7 @@ export function createLab(ctx) {
       range.min = '0';
       range.max = '100';
       range.value = String(state.slider);
-      range.setAttribute('aria-label', t('기준과 비교 이미지 경계'));
+      range.setAttribute('aria-label', t('lab.border_between_reference_and_result'));
       const place = () => {
         over.style.clipPath = `inset(0 0 0 ${state.slider}%)`;
         line.style.left = `${state.slider}%`;
@@ -446,13 +444,13 @@ export function createLab(ctx) {
       const caption = el(
         'p',
         'lab-caption',
-        t('왼쪽 기준 · {0}  |  오른쪽 비교 · {1}', [state.asIs.label, state.toBe.label]),
+        t('lab.left_reference_right_result', [state.asIs.label, state.toBe.label]),
       );
       stage.append(frame, caption);
       return;
     }
     const pair = el('div', 'lab-pair');
-    pair.append(figure(state.asIs, t('기준')), figure(state.toBe, t('비교')));
+    pair.append(figure(state.asIs, t('lab.reference')), figure(state.toBe, t('lab.result')));
     stage.append(pair);
   }
   async function useSettingsOf(job) {
@@ -464,9 +462,9 @@ export function createLab(ctx) {
       state.draft.settings = {...meta.settings};
       saveDraft();
       fillForm();
-      ctx.notify(t('이 결과의 프롬프트와 설정(시드 포함)을 불러왔습니다.'));
+      ctx.notify(t('lab.loaded_this_result_s_prompt_and'));
     } catch {
-      ctx.notify(t('메타데이터를 읽지 못했습니다.'), true);
+      ctx.notify(t('lab.could_not_read_the_metadata'), true);
     }
   }
   function renderView() {
@@ -480,7 +478,7 @@ export function createLab(ctx) {
     const top = el('div', 'lab-row lab-between');
     const chooser = el('select');
     if (!list.length) {
-      chooser.append(el('option', '', t('실험 기록 없음')));
+      chooser.append(el('option', '', t('lab.no_lab_runs_yet')));
       chooser.firstChild.value = '';
     }
     for (const group of list) {
@@ -488,10 +486,10 @@ export function createLab(ctx) {
       const option = el(
         'option',
         '',
-        t('{0} · {1}장{2}', [
+        t('lab.images', [
           new Date(first.created_at).toLocaleString(locale),
           group.jobs.length,
-          first.lab_variant ? t(' · 값 비교') : '',
+          first.lab_variant ? t('lab.value_sweep') : '',
         ]),
       );
       option.value = group.id;
@@ -506,8 +504,8 @@ export function createLab(ctx) {
     });
     const modes = el('div', 'lab-modes');
     for (const [key, text] of [
-      ['side', t('나란히')],
-      ['slider', t('슬라이더')],
+      ['side', t('common.side_by_side')],
+      ['slider', t('common.slider')],
     ]) {
       const b = btn(text, () => {
         state.mode = key;
@@ -524,12 +522,12 @@ export function createLab(ctx) {
     const tools = el('div', 'lab-row');
     if (state.toBe?.job)
       tools.append(
-        btn(t('비교 이미지 설정 불러오기'), () => useSettingsOf(state.toBe.job), 'lab-muted'),
+        btn(t('lab.load_the_result_s_settings'), () => useSettingsOf(state.toBe.job), 'lab-muted'),
       );
     if (state.asIs && state.toBe)
       tools.append(
         btn(
-          t('기준↔비교 바꾸기'),
+          t('lab.swap_reference_and_result'),
           () => {
             [state.asIs, state.toBe] = [state.toBe, state.asIs];
             renderView();
@@ -561,20 +559,20 @@ export function createLab(ctx) {
             'div',
             'lab-empty',
             job.status === 'failed'
-              ? t('실패')
+              ? t('common.failed')
               : job.status === 'running'
-                ? t('생성 중')
+                ? t('common.generating')
                 : DONE.includes(job.status)
-                  ? t('취소')
-                  : t('대기'),
+                  ? t('common.cancel')
+                  : t('common.queued'),
           ),
         );
       }
       const caption = el('div', 'lab-thumb-caption');
-      caption.append(el('span', '', tr(job.lab_variant) || t('시드 {0}', [job.seed])));
+      caption.append(el('span', '', tr(job.lab_variant) || t('lab.seed', [job.seed])));
       if (job.image_url)
         caption.append(
-          btn(t('기준'), () => {
+          btn(t('lab.reference'), () => {
             state.asIs = picture(job);
             renderView();
           }),
@@ -583,13 +581,7 @@ export function createLab(ctx) {
       card.append(caption);
       strip.append(card);
     }
-    const hint = el(
-      'p',
-      'lab-caption',
-      t(
-        '썸네일을 누르면 비교 이미지, "기준"을 누르면 기준 이미지가 됩니다. 값 비교는 한 줄이 같은 시드입니다.',
-      ),
-    );
+    const hint = el('p', 'lab-caption', t('lab.click_a_thumbnail_to_compare_it'));
     view.replaceChildren(top, stage, tools, strip, hint);
   }
 
@@ -634,16 +626,16 @@ export function createLab(ctx) {
     const image = params?.get('image');
     if (image) {
       const meta = await ctx.api(`/api/gallery/metadata?path=${encodeURIComponent(image)}`);
-      if (meta.error) ctx.notify(t('메타데이터 없음: {0}', [meta.error]), true);
+      if (meta.error) ctx.notify(t('lab.no_metadata', [tr(meta.error)]), true);
       else {
         state.draft.positive = meta.positive || '';
         state.draft.negative = meta.negative || '';
         if (meta.settings) state.draft.settings = {...meta.settings};
       }
-      state.source = {label: t('갤러리 {0}', [image]), image};
+      state.source = {label: t('lab.gallery', [image]), image};
       state.asIs = {
         url: `/outputs/${image.split('/').map(encodeURIComponent).join('/')}`,
-        label: t('갤러리 원본'),
+        label: t('lab.gallery_original'),
         fixed: true,
       };
       state.toBe = null;

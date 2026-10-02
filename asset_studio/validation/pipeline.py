@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
+from ..i18n import Msg
 from ..util import replace_file, settings_file, state_file
 from .vlm import LocalVLM, VLMError
 
@@ -69,7 +70,12 @@ class ValidationPipeline:
         if not isinstance(body, dict):
             raise ValueError('Invalid review settings')
         if self.studio.gpu.held_by('validation'):
-            raise ValueError('VLM 검증이 GPU를 쓰는 중입니다. 끝난 뒤에 바꾸세요.')
+            raise ValueError(
+                Msg(
+                    'server.pipeline.vlm_review_is_using_the_gpu',
+                    'VLM review is using the GPU. Change this after it finishes.',
+                )
+            )
         self.vlm.reload()
         max_count = body.get('max_auto_regenerations', self.settings['max_auto_regenerations'])
         enabled = body.get('enabled', self.settings['enabled'])
@@ -249,7 +255,12 @@ class ValidationPipeline:
         """
         with self.studio.lock, self._lock:
             if self.studio.gpu.held_by('validation'):
-                raise ValueError('VLM 검증이 진행 중입니다. 끝난 뒤에 정리하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.pipeline.vlm_review_is_running_clear_rounds',
+                        'VLM review is running. Clear rounds after it finishes.',
+                    )
+                )
             jobs = {job['id']: job for job in self.studio.jobs}
             count = 0
             for round_ in self.rounds:
@@ -346,12 +357,17 @@ class ValidationPipeline:
                     changed = True
                 elif job and job['status'] in ('failed', 'cancelled', 'interrupted'):
                     round_['status'] = 'needs_attention'
-                    round_['error'] = '생성이 끝나지 않았습니다. 확인한 뒤 큐의 재시도를 쓰세요.'
+                    round_['error'] = Msg(
+                        'server.pipeline.generation_did_not_finish_check_it',
+                        'Generation did not finish. Check it, then use Retry in the queue.',
+                    )
                     changed = True
                 elif job is None:
                     round_['status'] = 'needs_attention'
-                    round_['error'] = (
-                        '큐 기록에 이 회차의 작업이 없습니다. 확인한 뒤 새 회차를 시작하세요.'
+                    round_['error'] = Msg(
+                        'server.pipeline.the_queue_history_has_no_job',
+                        'The queue history has no job for this round. Check it, then start a new '
+                        'round.',
                     )
                     changed = True
             if changed:
@@ -539,8 +555,11 @@ class ValidationPipeline:
                 'count': len(prepared),
                 'reviewing': reviewing,
                 'rounds': copy.deepcopy(rounds),
-                'warning': '후처리한 이미지는 원래 생성 설정으로 다시 만들며, '
-                '나중에 한 보정은 재현되지 않습니다.'
+                'warning': Msg(
+                    'server.pipeline.post_processed_images_are_regenerated_from',
+                    'Post-processed images are regenerated from their original settings; later '
+                    'corrections are not reproduced.',
+                )
                 if postprocessed_selected
                 else '',
             }

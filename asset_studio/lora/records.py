@@ -8,6 +8,7 @@ loras/<L>.json                                 trained or downloaded LoRA files
 import math
 import re
 
+from ..i18n import Msg
 from ..library.layout import Location, valid_id
 
 LORA_SCOPES = ('character', 'global')
@@ -68,7 +69,13 @@ def _strings(value, label):
     if not isinstance(value, dict) or not all(
         isinstance(k, str) and isinstance(v, str) for k, v in value.items()
     ):
-        raise ValueError(f'{label}는 이름 → 문자열 객체여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.must_map_names_to_text',
+                '{value} must map names to text.',
+                value=label,
+            )
+        )
 
 
 def save_dataset(store, work_id, character_id, payload):
@@ -80,18 +87,38 @@ def save_dataset(store, work_id, character_id, payload):
     _strings(data.setdefault('triggers', {}), 'triggers')
     items = data.setdefault('items', [])
     if not isinstance(items, list):
-        raise ValueError('items는 목록이어야 합니다.')
+        raise ValueError(Msg('server.records.items_must_be_a_list', 'items must be a list.'))
     seen = set()
     for item in items:
         if not isinstance(item, dict) or not isinstance(item.get('path'), str):
-            raise ValueError('데이터셋 항목에는 path가 필요합니다.')
+            raise ValueError(
+                Msg('server.records.dataset_items_need_a_path', 'Dataset items need a path.')
+            )
         if item['path'] in seen:
-            raise ValueError(f'같은 이미지가 두 번 들어 있습니다: {item["path"]}')
+            raise ValueError(
+                Msg(
+                    'server.records.the_same_image_is_in_twice',
+                    'The same image is in twice: {path}',
+                    path=item['path'],
+                )
+            )
         seen.add(item['path'])
         if not re.fullmatch(r'[0-9a-f]{64}', str(item.get('sha256', ''))):
-            raise ValueError(f'{item["path"]}: sha256이 필요합니다.')
+            raise ValueError(
+                Msg(
+                    'server.records.sha256_is_required',
+                    '{path}: sha256 is required.',
+                    path=item['path'],
+                )
+            )
         if not isinstance(item.get('caption', ''), str):
-            raise ValueError(f'{item["path"]}: caption은 문자열이어야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.records.caption_must_be_text',
+                    '{path}: caption must be text.',
+                    path=item['path'],
+                )
+            )
     data = {'work_id': work_id, 'character_id': character_id, **data}
     store.write(path, data)
     return data
@@ -103,32 +130,66 @@ def save_lora(store, payload):
     previous = store.read(path) if path.exists() else {}
     data = store._merge(path, payload)
     if previous.get('origin') and data.get('origin') != previous['origin']:
-        raise ValueError('origin(어디서 학습됐는지)은 바꿀 수 없습니다.')
+        raise ValueError(
+            Msg(
+                'server.records.origin_where_it_was_trained_cannot',
+                'origin (where it was trained) cannot be changed.',
+            )
+        )
     if not isinstance(data.get('file'), str) or not data['file'].endswith('.safetensors'):
-        raise ValueError('file은 .safetensors 파일 이름이어야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.file_must_be_a_safetensors_file',
+                'file must be a .safetensors file name.',
+            )
+        )
     if data.setdefault('scope', 'global') not in LORA_SCOPES:
-        raise ValueError('scope는 character 또는 global이어야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.scope_must_be_character_or_global',
+                'scope must be character or global.',
+            )
+        )
     origin = data.get('origin')
     if data['scope'] == 'character' and not (
         isinstance(origin, dict) and origin.get('work_id') and origin.get('character_id')
     ):
-        raise ValueError('캐릭터 전용 LoRA는 학습한 작품·캐릭터(origin)가 있어야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.a_character_lora_needs_the_work',
+                'A character LoRA needs the work and character it was trained for (origin).',
+            )
+        )
     strength = data.setdefault('strength', 1.0)
     if (
         isinstance(strength, bool)
         or not isinstance(strength, (int, float))
         or not math.isfinite(strength)
     ):
-        raise ValueError('strength는 숫자여야 합니다.')
+        raise ValueError(
+            Msg('server.records.strength_must_be_a_number', 'strength must be a number.')
+        )
     if not isinstance(data.setdefault('auto_apply', False), bool):
-        raise ValueError('auto_apply는 true 또는 false여야 합니다.')
+        raise ValueError(
+            Msg('server.records.auto_apply_must_be_true_or', 'auto_apply must be true or false.')
+        )
     _strings(data.setdefault('triggers', {}), 'triggers')
     from .apply import APPLY_TO, key_of
 
     if data.setdefault('apply_to', 'character') not in APPLY_TO:
-        raise ValueError('apply_to는 character 또는 outfit이어야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.apply_to_must_be_character_or',
+                'apply_to must be character or outfit.',
+            )
+        )
     if data.setdefault('model_family', 'anima') not in ('anima', 'sdxl', 'shared'):
-        raise ValueError('model_family는 anima, sdxl, shared 중 하나여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.records.model_family_must_be_anima_sdxl',
+                'model_family must be anima, sdxl or shared.',
+            )
+        )
     store.write(path, data)
     # Only one automatic LoRA per character (or per outfit set): turn the others off.
     if data['auto_apply'] and key_of(data) is not None:

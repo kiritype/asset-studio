@@ -20,9 +20,9 @@ const FAMILY_DEFAULTS = {
 const NUMBERS = [
   ['steps', 'Steps', 1, 100, 1],
   ['cfg', 'CFG', 0, 30, 0.1],
-  ['width', t('가로'), 256, 3072, 16],
-  ['height', t('세로'), 256, 3072, 16],
-  ['seed', t('시드'), -1, 4294967295, 1],
+  ['width', t('common.width'), 256, 3072, 16],
+  ['height', t('common.height'), 256, 3072, 16],
+  ['seed', t('common.seed'), -1, 4294967295, 1],
 ];
 const arr = (value) => (Array.isArray(value) ? value : []);
 const el = (tag, cls = '', text) => {
@@ -149,29 +149,35 @@ export function renderGenerationSettings(container, {comfy, settings, onChange, 
       listKey === 'models' ? tr(comfy?.model_entries?.[value]?.label || value) : value,
     ]);
     if (settings[key] && !options.includes(settings[key]))
-      choices.unshift([settings[key], t('{0} · 목록에 없음', [settings[key]])]);
+      choices.unshift([settings[key], t('gensettings.not_in_the_list', [settings[key]])]);
     const control = choose(
-      [['', optional ? t('체크포인트 내장') : t('선택하세요')], ...choices],
+      [
+        ['', optional ? t('gensettings.built_into_the_checkpoint') : t('gensettings.choose')],
+        ...choices,
+      ],
       settings[key],
     );
     control.disabled = !!disabled;
     control.addEventListener('change', () => update({[key]: control.value}));
     grid.append(field(title, control, hint));
   };
-  list('model', family === 'sdxl' ? t('체크포인트') : t('모델'), 'models');
+  list('model', family === 'sdxl' ? t('gensettings.checkpoint') : t('common.model'), 'models');
   if (family === 'anima') {
-    list('text_encoder', t('텍스트 인코더'), 'text_encoders');
+    list('text_encoder', t('common.text_encoder'), 'text_encoders');
     list('vae', 'VAE', 'vaes');
-    list('clip_type', t('CLIP 유형'), 'clip_types');
+    list('clip_type', t('common.clip_type'), 'clip_types');
   } else {
-    list('vae', 'VAE', 'vaes', {optional: true, hint: t('비우면 체크포인트의 VAE를 씁니다.')});
+    list('vae', 'VAE', 'vaes', {
+      optional: true,
+      hint: t('gensettings.leave_empty_to_use_the_checkpoint'),
+    });
     const skip = number(settings.clip_skip ?? 2, 1, 12, 1);
     skip.disabled = !!disabled;
     skip.addEventListener('input', () => update({clip_skip: Number(skip.value)}));
-    grid.append(field('CLIP skip', skip, t('IL·Pony 계열은 보통 2')));
+    grid.append(field('CLIP skip', skip, t('gensettings.usually_2_for_illustrious_and_pony')));
   }
-  list('sampler', t('샘플러'), 'samplers');
-  list('scheduler', t('스케줄러'), 'schedulers');
+  list('sampler', t('common.sampler'), 'samplers');
+  list('scheduler', t('common.scheduler'), 'schedulers');
   for (const [key, title, min, max, step] of NUMBERS) {
     const control = number(settings[key], min, max, step);
     control.disabled = !!disabled;
@@ -185,10 +191,7 @@ export function renderGenerationSettings(container, {comfy, settings, onChange, 
   add.type = 'button';
   add.disabled = !!disabled;
   add.addEventListener('click', () =>
-    update(
-      {loras: [...arr(current.loras), {name: '', strength_model: 1, strength_clip: 1}]},
-      true,
-    ),
+    update({loras: [...arr(current.loras), {name: '', strength_model: 1, strength_clip: 1}]}, true),
   );
   loraHead.append(el('h3', '', 'LoRA'), add);
   container.append(loraHead);
@@ -197,25 +200,25 @@ export function renderGenerationSettings(container, {comfy, settings, onChange, 
     const row = el('div', 'gs-row gs-lora');
     const choices = loraOptions.map((name) => [name, name]);
     if (lora.name && !loraOptions.includes(lora.name))
-      choices.unshift([lora.name, t('{0} · 이 계열 목록에 없음', [lora.name])]);
-    const name = choose([['', t('선택하세요')], ...choices], lora.name);
+      choices.unshift([lora.name, t('gensettings.not_for_this_model_family', [lora.name])]);
+    const name = choose([['', t('gensettings.choose')], ...choices], lora.name);
     name.disabled = !!disabled;
     const replace = (changes) =>
       update({
         loras: current.loras.map((item, i) => (i === index ? {...item, ...changes} : item)),
       });
     name.addEventListener('change', () => replace({name: name.value}));
-    row.append(field(t('파일'), name));
+    row.append(field(t('common.file'), name));
     for (const [key, title] of [
-      ['strength_model', t('모델 강도')],
-      ['strength_clip', t('CLIP 강도')],
+      ['strength_model', t('common.model_strength')],
+      ['strength_clip', t('common.clip_strength')],
     ]) {
       const control = number(lora[key] ?? 1, -10, 10, 0.05);
       control.disabled = !!disabled;
       control.addEventListener('input', () => replace({[key]: Number(control.value)}));
       row.append(field(title, control));
     }
-    const remove = el('button', 'gs-danger', t('제거'));
+    const remove = el('button', 'gs-danger', t('gensettings.remove'));
     remove.type = 'button';
     remove.disabled = !!disabled;
     remove.addEventListener('click', () =>

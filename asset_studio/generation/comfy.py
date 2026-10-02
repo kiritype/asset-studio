@@ -6,6 +6,8 @@ from pathlib import PureWindowsPath
 from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
+from ..i18n import Msg, message_of
+
 
 class Comfy:
     def __init__(self, url):
@@ -24,10 +26,20 @@ class Comfy:
             return data if raw else (json.loads(data) if data.strip() else None)
         except HTTPError as e:
             detail = e.read().decode('utf-8', errors='replace')[:3000]
-            raise RuntimeError(f'ComfyUI 요청 실패 ({e.code}): {detail}') from e
+            raise RuntimeError(
+                Msg(
+                    'server.comfy.comfyui_request_failed',
+                    'ComfyUI request failed ({code}): {detail}',
+                    code=e.code,
+                    detail=detail,
+                )
+            ) from e
         except (URLError, TimeoutError) as e:
             raise RuntimeError(
-                'ComfyUI에 연결할 수 없습니다. ComfyUI가 실행 중인지 확인하세요.'
+                Msg(
+                    'server.comfy.cannot_connect_to_comfyui_check_that',
+                    'Cannot connect to ComfyUI. Check that ComfyUI is running.',
+                )
             ) from e
 
     def upload(self, name, raw, subfolder='asset_studio'):
@@ -54,9 +66,18 @@ class Comfy:
                 return json.loads(response.read())
         except HTTPError as e:
             detail = e.read().decode('utf-8', errors='replace')[:1000]
-            raise RuntimeError(f'ComfyUI 이미지 업로드 실패 ({e.code}): {detail}') from e
+            raise RuntimeError(
+                Msg(
+                    'server.comfy.comfyui_image_upload_failed',
+                    'ComfyUI image upload failed ({code}): {detail}',
+                    code=e.code,
+                    detail=detail,
+                )
+            ) from e
         except (URLError, TimeoutError) as e:
-            raise RuntimeError('ComfyUI에 연결할 수 없습니다.') from e
+            raise RuntimeError(
+                Msg('server.comfy.cannot_connect_to_comfyui', 'Cannot connect to ComfyUI.')
+            ) from e
 
     def catalog(self):
         try:
@@ -88,7 +109,7 @@ class Comfy:
                 result['model_entries'][ident] = {
                     'filename': name,
                     'loader': 'CheckpointLoaderSimple',
-                    'label': name + ' [체크포인트]',
+                    'label': Msg('server.comfy.checkpoint', '{name} [checkpoint]', name=name),
                 }
 
             def prefer(key, *names):
@@ -124,7 +145,7 @@ class Comfy:
         except Exception as e:
             return dict(
                 connected=False,
-                error=str(e),
+                error=message_of(e),
                 models=[],
                 text_encoders=[],
                 vaes=[],

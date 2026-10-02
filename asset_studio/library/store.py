@@ -9,6 +9,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..i18n import Msg
 from ..util import read_text, replace_file
 from .layout import (
     CATEGORIES_FILE,
@@ -41,7 +42,13 @@ def check_layout(data_root):
     if marker.is_file():
         version = json.loads(marker.read_text(encoding='utf-8')).get('layout_version')
         if version != LAYOUT_VERSION:
-            raise OutdatedLayoutError(f'data/ 형식 버전 {version}은(는) 지원하지 않습니다.')
+            raise OutdatedLayoutError(
+                Msg(
+                    'server.store.data_format_version_is_not_supported',
+                    'data/ format version {version} is not supported.',
+                    version=version,
+                )
+            )
         return
     old = [name for name in V1_MARKERS if (data_root / name).exists()]
     works = data_root / 'works'
@@ -50,8 +57,11 @@ def check_layout(data_root):
         old += [p.as_posix() for p in works.glob('*/characters/*/outfits')]
     if old:
         raise OutdatedLayoutError(
-            'data/ 폴더가 이전 형식(v1)입니다. 서버를 시작하기 전에 '
-            '`python tools/migrations/v2.py --apply`로 변환하세요.'
+            Msg(
+                'server.store.the_data_folder_uses_the_old',
+                'The data/ folder uses the old format (v1). Convert it with `python '
+                'tools/migrations/v2.py --apply` before starting the server.',
+            )
         )
 
 
@@ -60,7 +70,13 @@ def text_field(value, label):
         isinstance(value, list) and all(isinstance(v, str) for v in value)
     ):
         return value
-    raise ValueError(f'{label}은(는) 문자열 또는 문자열 목록이어야 합니다.')
+    raise ValueError(
+        Msg(
+            'server.store.must_be_text_or_a_list',
+            '{value} must be text or a list of text.',
+            value=label,
+        )
+    )
 
 
 class LibraryStore:
@@ -75,7 +91,9 @@ class LibraryStore:
     def read(path):
         value = json.loads(read_text(path))
         if not isinstance(value, dict):
-            raise ValueError(f'JSON 객체가 아닙니다: {path}')
+            raise ValueError(
+                Msg('server.store.not_a_json_object', 'Not a JSON object: {path}', path=path)
+            )
         return value
 
     def write(self, path, data):
@@ -123,7 +141,13 @@ class LibraryStore:
 
     def preset_file(self, preset_type, ident):
         if preset_type not in PRESET_TYPES:
-            raise ValueError('프리셋 종류는 ' + ', '.join(PRESET_TYPES) + ' 중 하나여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.store.the_preset_type_must_be_one',
+                    'The preset type must be one of {preset_types}.',
+                    preset_types=', '.join(PRESET_TYPES),
+                )
+            )
         return self.root / 'presets' / preset_type / (valid_id(ident) + '.json')
 
     def piece_file(self, location, category, ident):
@@ -138,7 +162,13 @@ class LibraryStore:
     def require_owner(self, location):
         owner = location.owner_file(self.root)
         if owner is not None and not owner.is_file():
-            raise ValueError(f'없는 작품 또는 캐릭터입니다: {location.label()}')
+            raise ValueError(
+                Msg(
+                    'server.store.work_or_character_not_found',
+                    'Work or character not found: {name}',
+                    name=location.label(),
+                )
+            )
 
     # ---- reading ---------------------------------------------------------------
 
@@ -237,7 +267,9 @@ class LibraryStore:
         """Everything one work can use: global, work-shared and per-character records."""
         work_file = self.work_file(work_id)
         if not work_file.is_file():
-            raise FileNotFoundError(f'없는 작품입니다: {work_id}')
+            raise FileNotFoundError(
+                Msg('server.store.work_not_found', 'Work not found: {work_id}', work_id=work_id)
+            )
         catalog = self.global_catalog()
         categories = Categories(catalog['categories'])
         shared = Location('work', work_id)
@@ -269,7 +301,12 @@ class LibraryStore:
             if key in data:
                 text_field(data[key], key)
         if data.get('model_family', 'anima') not in MODEL_FAMILIES:
-            raise ValueError('model_family는 anima, sdxl, shared 중 하나여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.store.model_family_must_be_anima_sdxl',
+                    'model_family must be anima, sdxl or shared.',
+                )
+            )
         return data
 
     def save_work(self, payload):
@@ -294,19 +331,36 @@ class LibraryStore:
         existing = self.find_piece(location, parsed['bucket'], payload['id'], categories)
         if existing and existing != path:
             other = existing.parent.relative_to(self.pieces_dir(location)).as_posix()
-            raise ValueError(f'같은 id의 조각이 이미 있습니다: {other}/{payload["id"]}')
+            raise ValueError(
+                Msg(
+                    'server.store.a_piece_with_this_id_already',
+                    'A piece with this id already exists: {other}/{id_value}',
+                    other=other,
+                    id_value=payload['id'],
+                )
+            )
         level = (parsed['level'],) if parsed['level'] else ()
         data = self._merge(path, payload, drop=(*DERIVED_PIECE_FIELDS, *level))
         if parsed['role'] == 'expression':
             # Image files are named <expression id>[_<n>].webp, so the id has a fixed shape.
             if not re.fullmatch(r'\d{3}', data['id']) or data['id'] == '000':
-                raise ValueError('감정 id는 001~999 세 자리 숫자여야 합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.store.an_expression_id_must_be_three',
+                        'An expression id must be three digits from 001 to 999.',
+                    )
+                )
             self._check_composition(location, data)
         if parsed['role'] == 'composition' and 'suggest_slots' in data:
             if not isinstance(data['suggest_slots'], list):
-                raise ValueError('suggest_slots는 의상 부위 목록이어야 합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.store.suggest_slots_must_be_a_list',
+                        'suggest_slots must be a list of outfit slots.',
+                    )
+                )
             for slot in data['suggest_slots']:
-                valid_id(slot, '의상 부위')
+                valid_id(slot, Msg('server.store.outfit_slots', 'Outfit slots'))
         self.write(path, data)
         return self.piece_record(path, location, categories)
 
@@ -317,7 +371,13 @@ class LibraryStore:
             return
         valid_id(reference, 'composition_id')
         if not self.resolve_piece(location, 'composition', reference):
-            raise ValueError(f'없는 구도입니다: {reference}')
+            raise ValueError(
+                Msg(
+                    'server.store.composition_not_found',
+                    'Composition not found: {reference}',
+                    reference=reference,
+                )
+            )
 
     def save_outfit_set(self, location, payload):
         self.require_owner(location)
@@ -325,27 +385,46 @@ class LibraryStore:
         data = self._merge(path, payload, drop=DERIVED_SET_FIELDS)
         slots = data.setdefault('slots', {})
         if not isinstance(slots, dict):
-            raise ValueError('slots는 부위 → 조각 참조 객체여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.store.slots_must_map_slots_to_piece',
+                    'slots must map slots to piece references.',
+                )
+            )
         categories = self.categories()
         for slot, reference in slots.items():
             self.slot_target(location, slot, reference, categories)
         if 'props' in data and not isinstance(data['props'], dict):
-            raise ValueError('props는 객체여야 합니다.')
+            raise ValueError(
+                Msg('server.store.props_must_be_an_object', 'props must be an object.')
+            )
         self.write(path, data)
         return dict(data, **location.fields())
 
     def slot_target(self, location, slot, reference, categories=None):
         """The piece file an outfit-set slot points at; raises when it does not exist."""
-        valid_id(slot, '의상 부위')
+        valid_id(slot, Msg('server.store.outfit_slots', 'Outfit slots'))
         if not isinstance(reference, dict) or reference.get('scope') not in visible_scopes(
             location.scope
         ):
-            raise ValueError(f'{slot}: 이 위치에서 쓸 수 없는 조각 범위입니다.')
+            raise ValueError(
+                Msg(
+                    'server.store.this_piece_scope_cannot_be_used',
+                    '{slot}: this piece scope cannot be used here.',
+                    slot=slot,
+                )
+            )
         place = location.widen(reference['scope'])
         path = self.find_piece(place, f'outfit/{slot}', valid_id(reference.get('id')), categories)
         if path is None:
             raise ValueError(
-                f'{slot}: 없는 의상 조각입니다 ({reference["scope"]}/{reference["id"]}).'
+                Msg(
+                    'server.store.outfit_piece_not_found',
+                    '{slot}: outfit piece not found ({scope}/{id_value}).',
+                    slot=slot,
+                    scope=reference['scope'],
+                    id_value=reference['id'],
+                )
             )
         return path
 
@@ -353,15 +432,27 @@ class LibraryStore:
         path = self.preset_file(preset_type, payload.get('id'))
         data = self._merge(path, payload)
         if preset_type == 'generation' and not isinstance(data.setdefault('settings', {}), dict):
-            raise ValueError('생성 설정은 객체여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.store.generation_settings_must_be_an_object',
+                    'Generation settings must be an object.',
+                )
+            )
         if preset_type == 'expression_set':
             expressions = data.setdefault('expressions', [])
             if not isinstance(expressions, list):
-                raise ValueError('expressions는 목록이어야 합니다.')
+                raise ValueError(
+                    Msg('server.store.expressions_must_be_a_list', 'expressions must be a list.')
+                )
             for reference in expressions:
                 if not isinstance(reference, dict):
-                    raise ValueError('감정 참조는 {"id": "001"} 형식이어야 합니다.')
-                valid_id(reference.get('id'), '감정 id')
+                    raise ValueError(
+                        Msg(
+                            'server.store.an_expression_reference_looks_like',
+                            'An expression reference looks like {"id": "001"}.',
+                        )
+                    )
+                valid_id(reference.get('id'), Msg('server.store.expression_id', 'expression id'))
         self.write(path, data)
         return data
 

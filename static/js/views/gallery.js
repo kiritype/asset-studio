@@ -35,7 +35,7 @@ const display = (value) =>
         ? JSON.stringify(value, null, 2)
         : String(value);
 const dateLabel = (value) => {
-  if (!value) return t('날짜 정보 없음');
+  if (!value) return t('gallery.no_date');
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(locale);
 };
@@ -88,16 +88,16 @@ export function createGallery(ctx) {
   const titleBox = node('div');
   titleBox.append(
     node('div', 'g-eyebrow', 'GALLERY / ARCHIVE'),
-    node('h1', '', t('갤러리')),
-    node('p', '', t('생성한 이미지를 작품별로 탐색하고 제작 기록을 확인하세요.')),
+    node('h1', '', t('common.gallery')),
+    node('p', '', t('gallery.browse_generated_images_by_work_and')),
   );
-  const refresh = node('button', 'g-button', t('새로고침'));
+  const refresh = node('button', 'g-button', t('gallery.refresh'));
   refresh.type = 'button';
   heading.append(titleBox, refresh);
 
   const layout = node('div', 'g-layout');
   const sidebar = node('aside', 'g-sidebar');
-  sidebar.append(node('h2', '', t('작품 라이브러리')));
+  sidebar.append(node('h2', '', t('gallery.work_library')));
   const treeBox = node('div', 'g-tree');
   sidebar.append(treeBox);
   const main = node('div', 'g-main');
@@ -113,98 +113,102 @@ export function createGallery(ctx) {
     filters.append(wrapper);
     return select;
   };
-  const characterSelect = makeSelect(t('캐릭터'), [['', t('전체 캐릭터')]], () =>
-    changeFilter('character', characterSelect.value),
+  const characterSelect = makeSelect(
+    t('common.character'),
+    [['', t('gallery.all_characters')]],
+    () => changeFilter('character', characterSelect.value),
   );
-  const outfitSelect = makeSelect(t('의상'), [['', t('전체 의상')]], () =>
+  const outfitSelect = makeSelect(t('common.outfit'), [['', t('gallery.all_outfits')]], () =>
     changeFilter('outfit', outfitSelect.value),
   );
-  const expressionSelect = makeSelect(t('감정·동작'), [['', t('전체 감정·동작')]], () =>
-    changeFilter('expression', expressionSelect.value),
+  const expressionSelect = makeSelect(
+    t('common.expression'),
+    [['', t('gallery.all_expressions')]],
+    () => changeFilter('expression', expressionSelect.value),
   );
   const categorySelect = makeSelect(
-    t('구분'),
+    t('gallery.rating'),
     [
-      ['', t('전체')],
-      ['sfw', t('일반 · SFW')],
-      ['nsfw', t('성인 · NSFW')],
+      ['', t('common.all')],
+      ['sfw', t('gallery.general_sfw')],
+      ['nsfw', t('gallery.adult_nsfw')],
     ],
     () => changeFilter('category', categorySelect.value),
   );
   const familySelect = makeSelect(
-    t('모델'),
+    t('common.model'),
     [
-      ['', t('전체 모델')],
+      ['', t('gallery.all_models')],
       ['anima', 'Anima'],
       ['sdxl', 'SDXL·IL'],
-      ['unknown', t('기록 없음')],
+      ['unknown', t('gallery.no_record')],
     ],
     () => changeFilter('family', familySelect.value),
   );
   const sortSelect = makeSelect(
-    t('정렬'),
+    t('gallery.sort'),
     [
-      ['newest', t('최신순')],
-      ['oldest', t('오래된순')],
-      ['code', t('코드순')],
+      ['newest', t('gallery.newest_first')],
+      ['oldest', t('gallery.oldest_first')],
+      ['code', t('gallery.by_code')],
     ],
     () => changeFilter('sort', sortSelect.value),
   );
   const pageSizeSelect = makeSelect(
-    t('페이지당'),
+    t('gallery.per_page'),
     [
-      ['48', t('48장')],
-      ['96', t('96장')],
+      ['48', t('gallery.48_per_page')],
+      ['96', t('gallery.96_per_page')],
     ],
     () => changeFilter('pageSize', Number(pageSizeSelect.value)),
   );
   const latestLabel = node('label', 'g-latest');
   const latestCheck = node('input');
   latestCheck.type = 'checkbox';
-  latestLabel.append(latestCheck, node('span', '', t('각 항목의 최신 이미지')));
+  latestLabel.append(latestCheck, node('span', '', t('gallery.latest_image_of_each')));
   latestCheck.addEventListener('change', () => changeFilter('latest', latestCheck.checked));
   filters.append(latestLabel);
   const humanSelect = makeSelect(
-    t('내 판정'),
+    t('gallery.my_verdict'),
     [
-      ['', t('전체')],
-      ['unreviewed', t('미검수')],
-      ['pass', t('통과')],
-      ['fail', t('실패')],
+      ['', t('common.all')],
+      ['unreviewed', t('gallery.unreviewed')],
+      ['pass', t('common.pass')],
+      ['fail', t('common.failed')],
     ],
     () => changeFilter('human', humanSelect.value),
   );
   const autoSelect = makeSelect(
-    t('VLM 참고'),
+    t('gallery.vlm_note'),
     [
-      ['', t('전체')],
-      ['pending', t('대기')],
-      ['pass', t('통과')],
-      ['fail', t('실패')],
-      ['uncertain', t('불확실')],
-      ['error', t('오류')],
+      ['', t('common.all')],
+      ['pending', t('common.queued')],
+      ['pass', t('common.pass')],
+      ['fail', t('common.failed')],
+      ['uncertain', t('gallery.uncertain')],
+      ['error', t('common.error')],
     ],
     () => changeFilter('auto', autoSelect.value),
   );
   const selectedLabel = node('label', 'g-latest');
   const selectedCheck = node('input');
   selectedCheck.type = 'checkbox';
-  selectedLabel.append(selectedCheck, node('span', '', t('확정 채택만')));
+  selectedLabel.append(selectedCheck, node('span', '', t('gallery.adopted_only')));
   selectedCheck.addEventListener('change', () =>
     changeFilter('selectedOnly', selectedCheck.checked),
   );
   filters.append(selectedLabel);
   toolbar.append(filters);
   const statusLine = node('div', 'g-status');
-  const count = node('span', '', t('불러오는 중…'));
-  const updateBanner = node('button', 'g-update', t('새 이미지가 있습니다 · 갱신'));
+  const count = node('span', '', t('gallery.loading'));
+  const updateBanner = node('button', 'g-update', t('gallery.new_images_refresh'));
   updateBanner.type = 'button';
   updateBanner.hidden = true;
   updateBanner.addEventListener('click', () => loadResults(true));
   statusLine.append(count, updateBanner);
   const actionBar = node('section', 'g-actions');
-  actionBar.setAttribute('aria-label', t('이미지 선택과 검수'));
-  const selectionCount = node('strong', 'g-selection-count', t('선택 0장'));
+  actionBar.setAttribute('aria-label', t('gallery.image_selection_and_review'));
+  const selectionCount = node('strong', 'g-selection-count', t('gallery.0_selected'));
   const selectionMessage = node('span', 'g-inline-message');
   selectionMessage.setAttribute('role', 'status');
   const actionButton = (label, fn) => {
@@ -213,52 +217,44 @@ export function createGallery(ctx) {
     button.onclick = fn;
     return button;
   };
-  const selectPage = actionButton(t('이 페이지 선택'), () => addSelection(state.results));
-  const selectFiltered = actionButton(t('필터 결과 전체 선택'), selectAllFiltered);
-  const clearSelection = actionButton(t('선택 해제'), () => {
+  const selectPage = actionButton(t('gallery.select_this_page'), () => addSelection(state.results));
+  const selectFiltered = actionButton(t('gallery.select_all_filtered'), selectAllFiltered);
+  const clearSelection = actionButton(t('common.clear_selection'), () => {
     state.chosen.clear();
     renderResults();
   });
-  const reviewPass = actionButton(t('선택 통과'), () => reviewChosen('pass'));
-  const reviewFail = actionButton(t('선택 실패'), () => reviewChosen('fail'));
-  const reviewReset = actionButton(t('선택 미검수'), () => reviewChosen('unreviewed'));
-  const regenerate = actionButton(t('새 시드로 재생성'), () =>
+  const reviewPass = actionButton(t('gallery.pass_selected'), () => reviewChosen('pass'));
+  const reviewFail = actionButton(t('gallery.fail_selected'), () => reviewChosen('fail'));
+  const reviewReset = actionButton(t('gallery.mark_selected_unreviewed'), () =>
+    reviewChosen('unreviewed'),
+  );
+  const regenerate = actionButton(t('gallery.regenerate_with_a_new_seed'), () =>
     regenerateItems([...state.chosen.values()]),
   );
-  const toTools = actionButton(t('이미지 도구로 보내기'), async () => {
+  const toTools = actionButton(t('gallery.send_to_image_tools'), async () => {
     try {
       const paths = [...state.chosen.values()].map((item) => item.path);
       const result = await ctx.api('/api/tools/gallery', {paths});
-      ctx.notify(t('{0}장을 이미지 도구에 추가했습니다.', [result.added.length]));
+      ctx.notify(t('gallery.added_images_to_the_image_tools', [result.added.length]));
       ctx.navigate('/tools');
     } catch (error) {
       setMessage(error.message || String(error), true);
     }
   });
-  const exportButton = actionButton(t('현재 범위 ZIP 내보내기'), () => exportCurrent());
-  const exportPartial = actionButton(t('누락 제외하고 부분 내보내기'), () => exportCurrent(true));
+  const exportButton = actionButton(t('gallery.export_current_scope_as_zip'), () =>
+    exportCurrent(),
+  );
+  const exportPartial = actionButton(t('gallery.export_without_the_missing_ones'), () =>
+    exportCurrent(true),
+  );
   exportPartial.hidden = true;
-  const exportHint = node(
-    'p',
-    'g-muted',
-    t(
-      '사람이 통과로 확정한 이미지 중 작품·캐릭터·의상·구분 필터에 맞는 파일을 내보냅니다. 누락 항목이 있으면 부분 내보내기를 선택할 수 있습니다.',
-    ),
-  );
-  const regenHint = node(
-    'p',
-    'g-muted',
-    t(
-      '원본 제작 기록을 사용해 시드만 바꾸어 새 이미지를 생성합니다. 원본 이미지에 나중에 적용한 편집은 재현되지 않습니다.',
-    ),
-  );
+  const exportHint = node('p', 'g-muted', t('gallery.exports_images_a_person_passed_that'));
+  const regenHint = node('p', 'g-muted', t('gallery.generates_new_images_from_the_original'));
   const roundPanel = node('details', 'g-rounds');
   const roundSummary = node('summary');
   const roundList = node('div', 'g-round-list');
-  const roundDismiss = actionButton(t('끝난 회차 정리'), dismissRounds);
-  roundDismiss.title = t(
-    '진행 중이 아닌 회차를 목록에서 치웁니다. 이미지와 판정 기록은 그대로 남습니다.',
-  );
+  const roundDismiss = actionButton(t('gallery.clear_finished_rounds'), dismissRounds);
+  roundDismiss.title = t('gallery.clears_rounds_that_are_not_running');
   roundPanel.append(roundSummary, roundList, roundDismiss);
   roundPanel.hidden = true;
   actionBar.append(
@@ -279,51 +275,53 @@ export function createGallery(ctx) {
   );
   const grid = node('div', 'g-grid');
   const pagination = node('nav', 'g-pagination');
-  pagination.setAttribute('aria-label', t('갤러리 페이지'));
+  pagination.setAttribute('aria-label', t('gallery.gallery_pages'));
   main.append(toolbar, statusLine, roundPanel, actionBar, grid, pagination);
   layout.append(sidebar, main);
   root.append(heading, layout);
 
   const dialog = node('dialog', 'g-lightbox');
-  dialog.setAttribute('aria-label', t('이미지 상세 정보'));
+  dialog.setAttribute('aria-label', t('gallery.image_details'));
   const lightbox = node('div', 'g-lightbox-layout');
   const viewer = node('div', 'g-viewer');
   const viewerBar = node('div', 'g-viewer-bar');
   const prev = node('button', 'g-icon', '←');
   prev.type = 'button';
-  prev.setAttribute('aria-label', t('이전 이미지'));
+  prev.setAttribute('aria-label', t('gallery.previous_image'));
   const next = node('button', 'g-icon', '→');
   next.type = 'button';
-  next.setAttribute('aria-label', t('다음 이미지'));
-  const zoom = node('button', 'g-button', t('100% 보기'));
+  next.setAttribute('aria-label', t('gallery.next_image'));
+  const zoom = node('button', 'g-button', t('gallery.view_at_100'));
   zoom.type = 'button';
   const close = node('button', 'g-icon', '×');
   close.type = 'button';
-  close.setAttribute('aria-label', t('닫기'));
+  close.setAttribute('aria-label', t('gallery.close'));
   viewerBar.append(prev, next, zoom, close);
   const imageScroll = node('div', 'g-image-scroll');
   const fullImage = node('img');
-  fullImage.alt = t('생성 이미지');
+  fullImage.alt = t('gallery.generated_image');
   fullImage.addEventListener('error', () => {
-    viewerCaption.textContent = t('이미지를 열 수 없습니다.');
+    viewerCaption.textContent = t('gallery.cannot_open_the_image');
   });
   imageScroll.append(fullImage);
   const viewerCaption = node('div', 'g-viewer-caption');
   viewer.append(viewerBar, imageScroll, viewerCaption);
   const details = node('aside', 'g-details');
   const detailsHead = node('div', 'g-details-head');
-  detailsHead.append(node('h2', '', t('제작 기록')));
+  detailsHead.append(node('h2', '', t('gallery.record')));
   const detailReview = node('div', 'g-detail-review');
   const detailBadges = node('div', 'g-badges');
-  const detailPass = actionButton(t('✓ 통과 (P)'), () => reviewItems([currentItem()], 'pass'));
-  const detailFail = actionButton(t('✕ 실패 (F)'), () => reviewItems([currentItem()], 'fail'));
-  const detailReset = actionButton(t('미검수 (U)'), () =>
+  const detailPass = actionButton(t('gallery.pass_p'), () => reviewItems([currentItem()], 'pass'));
+  const detailFail = actionButton(t('gallery.fail_f'), () => reviewItems([currentItem()], 'fail'));
+  const detailReset = actionButton(t('gallery.unreviewed_u'), () =>
     reviewItems([currentItem()], 'unreviewed'),
   );
-  const detailRegen = actionButton(t('새 시드로 재생성'), () => regenerateItems([currentItem()]));
+  const detailRegen = actionButton(t('gallery.regenerate_with_a_new_seed'), () =>
+    regenerateItems([currentItem()]),
+  );
   const detailButtons = {pass: detailPass, fail: detailFail, unreviewed: detailReset};
   // The lab starts from this image's prompt and settings and keeps it as the reference.
-  const detailLab = actionButton(t('실험실에서 열기'), () => {
+  const detailLab = actionButton(t('common.open_in_lab'), () => {
     const item = currentItem();
     if (!item) return;
     dialog.close();
@@ -406,13 +404,17 @@ export function createGallery(ctx) {
       ? {path: item.relative_path || item.path, sha256: item.sha256}
       : null;
   const identityKey = (item) => `${item.relative_path || item.path}\u0000${item.sha256}`;
-  const humanLabel = {unreviewed: t('미검수'), pass: t('통과'), fail: t('실패')};
+  const humanLabel = {
+    unreviewed: t('gallery.unreviewed'),
+    pass: t('common.pass'),
+    fail: t('common.failed'),
+  };
   const autoLabel = {
-    pending: t('대기'),
-    pass: t('통과'),
-    fail: t('실패'),
-    uncertain: t('불확실'),
-    error: t('오류'),
+    pending: t('common.queued'),
+    pass: t('common.pass'),
+    fail: t('common.failed'),
+    uncertain: t('gallery.uncertain'),
+    error: t('common.error'),
   };
   const autoMark = {pass: '✓', fail: '✕', uncertain: '?', error: '!'};
   const humanOf = (item) => item.human_status || 'unreviewed';
@@ -420,16 +422,16 @@ export function createGallery(ctx) {
   /** The person's verdict as one chip; nothing for an image not judged yet. */
   function humanChip(item) {
     if (item.selected) {
-      const chip = node('span', 'g-chip pass selected', t('★ 채택'));
-      chip.title = t('통과 판정을 받은, 이 감정의 현재 채택본입니다.');
+      const chip = node('span', 'g-chip pass selected', t('gallery.adopted'));
+      chip.title = t('gallery.passed_the_currently_adopted_image_of');
       return chip;
     }
     if (humanOf(item) === 'pass') {
-      const chip = node('span', 'g-chip pass', t('✓ 통과'));
-      chip.title = t('통과 판정을 받았지만, 같은 감정의 다른 이미지가 채택본입니다.');
+      const chip = node('span', 'g-chip pass', t('gallery.pass'));
+      chip.title = t('gallery.passed_but_another_image_of_the');
       return chip;
     }
-    if (humanOf(item) === 'fail') return node('span', 'g-chip fail', t('✕ 실패'));
+    if (humanOf(item) === 'fail') return node('span', 'g-chip fail', t('gallery.fail'));
     return null;
   }
   /** The VLM verdict as a small reference chip; hidden when review is off or not done. */
@@ -441,8 +443,8 @@ export function createGallery(ctx) {
       (humanOf(item) === 'fail' && autoOf(item) === 'pass');
     chip.classList.toggle('disagree', disagrees);
     chip.title = [
-      t('VLM 참고 판정: {0}', [autoLabel[autoOf(item)]]),
-      disagrees ? t('내 판정과 다릅니다.') : '',
+      t('gallery.vlm_verdict_reference', [autoLabel[autoOf(item)]]),
+      disagrees ? t('gallery.differs_from_my_verdict') : '',
       item.auto_reason || '',
     ]
       .filter(Boolean)
@@ -467,7 +469,7 @@ export function createGallery(ctx) {
         added++;
       }
     }
-    setMessage(t('{0}장 추가', [added]));
+    setMessage(t('gallery.added', [added]));
     renderResults();
   }
   async function selectAllFiltered() {
@@ -494,12 +496,12 @@ export function createGallery(ctx) {
             selected++;
           }
         }
-        setMessage(t('필터 결과 선택 중 · {0}장', [selected]));
+        setMessage(t('gallery.selecting_filtered_images', [selected]));
         if (page >= Number(payload.pages || 1)) break;
       }
-      setMessage(t('필터 결과 {0}장 추가', [selected]));
+      setMessage(t('gallery.added_filtered_images', [selected]));
     } catch (error) {
-      setMessage(t('선택 중단: {0}', [error.message || error]), true);
+      setMessage(t('gallery.selection_stopped', [error.message || error]), true);
     } finally {
       state.selectBusy = false;
       selectFiltered.disabled = false;
@@ -515,13 +517,13 @@ export function createGallery(ctx) {
       const response = await ctx.api('/api/gallery/review', {items: ids, verdict});
       const errors = asList(response.errors);
       setMessage(
-        t('{0}장 {1} 처리{2}', [
+        t('gallery.images_2', [
           ids.length - errors.length,
           humanLabel[verdict],
           errors.length
-            ? t(' · {0}장 실패: {1}', [
+            ? t('gallery.failed', [
                 errors.length,
-                errors[0].error || errors[0].message || t('상태가 바뀌었습니다'),
+                tr(errors[0].error) || tr(errors[0].message) || t('gallery.status_changed'),
               ])
             : '',
         ]),
@@ -557,10 +559,10 @@ export function createGallery(ctx) {
       const response = await ctx.api('/api/gallery/regenerate', {items: ids});
       const count = response.count ?? asList(response.rounds).length;
       setMessage(
-        t('{0}장을 새 시드로 대기열에 등록했습니다.{1}{2}', [
+        t('gallery.queued_images_with_new_seeds', [
           count,
-          response.reviewing ? t(' 생성 후 VLM이 검증합니다.') : '',
-          response.warning ? t(' 생성 후 따로 적용한 편집은 재현되지 않습니다.') : '',
+          response.reviewing ? t('gallery.the_vlm_reviews_them_after_generation') : '',
+          response.warning ? t('gallery.edits_applied_after_generation_are_not') : '',
         ]),
       );
       ctx.onQueueChanged?.();
@@ -574,7 +576,7 @@ export function createGallery(ctx) {
   }
   function updateActions() {
     const has = state.chosen.size > 0;
-    selectionCount.textContent = t('선택 {0}장', [state.chosen.size.toLocaleString(locale)]);
+    selectionCount.textContent = t('common.selected', [state.chosen.size.toLocaleString(locale)]);
     for (const button of [reviewPass, reviewFail, reviewReset, regenerate, toTools])
       button.disabled = !has || state.actionBusy || ctx.preview;
     for (const button of [detailPass, detailFail, detailReset, detailRegen])
@@ -582,14 +584,14 @@ export function createGallery(ctx) {
     clearSelection.disabled = !has || state.actionBusy;
   }
   const ROUND_STATUS = {
-    waiting_generation: t('생성 대기'),
-    pending_review: t('VLM 검증 대기'),
-    reviewing: t('VLM 검증 중'),
-    switching: t('GPU 전환 중'),
-    queueing: t('재생성 준비 중'),
-    failed_review: t('VLM 실패 · 확인 필요'),
-    needs_attention: t('확인 필요'),
-    limit_reached: t('자동 재생성 한도 도달'),
+    waiting_generation: t('gallery.waiting_to_generate'),
+    pending_review: t('gallery.waiting_for_vlm_review'),
+    reviewing: t('gallery.vlm_reviewing'),
+    switching: t('gallery.switching_gpu_use'),
+    queueing: t('gallery.preparing_regeneration'),
+    failed_review: t('gallery.vlm_failed_check_needed'),
+    needs_attention: t('gallery.check_needed'),
+    limit_reached: t('gallery.auto_regeneration_limit_reached'),
   };
   const ROUND_ACTIVE = [
     'waiting_generation',
@@ -629,7 +631,7 @@ export function createGallery(ctx) {
       const active = state.rounds.filter(isActive);
       const attention = state.rounds.length - active.length;
       roundPanel.hidden = !state.rounds.length;
-      roundSummary.textContent = t('VLM 검증 · 진행 {0}건 · 확인 필요 {1}건', [
+      roundSummary.textContent = t('gallery.vlm_review_in_progress_to_check', [
         active.length,
         attention,
       ]);
@@ -641,9 +643,9 @@ export function createGallery(ctx) {
           node(
             'div',
             `g-round-item${isActive(round) ? '' : ' attention'}`,
-            t('{0} · {1} · 자동 재생성 {2}/{3}{4}', [
+            t('gallery.auto_regenerations', [
               asList(round.combo).join('/'),
-              round.stale ? t('멈춤 · 대기열에 작업이 없음') : ROUND_STATUS[round.status],
+              round.stale ? t('gallery.stalled_no_job_in_the_queue') : ROUND_STATUS[round.status],
               n,
               limit,
               round.error ? ` · ${tr(round.error)}` : '',
@@ -653,7 +655,11 @@ export function createGallery(ctx) {
       }
       if (state.rounds.length > ROUND_LIST_LIMIT)
         roundList.append(
-          node('div', 'g-round-item', t('… 외 {0}건', [state.rounds.length - ROUND_LIST_LIMIT])),
+          node(
+            'div',
+            'g-round-item',
+            t('gallery.and_more', [state.rounds.length - ROUND_LIST_LIMIT]),
+          ),
         );
       roundDismiss.disabled = ctx.preview || state.actionBusy;
     } catch {
@@ -661,17 +667,10 @@ export function createGallery(ctx) {
     }
   }
   async function dismissRounds() {
-    if (
-      !confirm(
-        t(
-          '진행 중이 아닌 VLM 검증 회차를 목록에서 치울까요?\n이미지와 판정 기록은 그대로 남습니다.',
-        ),
-      )
-    )
-      return;
+    if (!confirm(t('gallery.clear_vlm_review_rounds_that_are'))) return;
     try {
       const result = await ctx.api('/api/review/rounds/dismiss', {});
-      setMessage(t('VLM 검증 회차 {0}건을 정리했습니다.', [result.dismissed]));
+      setMessage(t('gallery.cleared_vlm_review_rounds', [result.dismissed]));
       await loadRounds();
     } catch (error) {
       setMessage(error.message || String(error), true);
@@ -680,7 +679,7 @@ export function createGallery(ctx) {
   async function exportCurrent(allowPartial = false) {
     if (state.actionBusy) return;
     if (!state.category) {
-      setMessage(t('내보낼 구분을 SFW 또는 NSFW로 선택하세요.'), true);
+      setMessage(t('gallery.choose_sfw_or_nsfw_to_export'), true);
       categorySelect.focus();
       return;
     }
@@ -703,17 +702,19 @@ export function createGallery(ctx) {
           const missing = data.missing || data.summary?.missing || [];
           const summary =
             Array.isArray(missing) && missing.length
-              ? t('{0}개 항목 누락: {1}{2}', [
+              ? t('gallery.missing_2', [
                   missing.length,
                   missing.slice(0, 5).join(', '),
                   missing.length > 5 ? '…' : '',
                 ])
-              : data.error || t('필수 항목 누락');
-          setMessage(t('내보내기 불완전 · {0}', [summary]), true);
+              : tr(data.error) || t('gallery.missing_required_fields');
+          setMessage(t('gallery.export_incomplete', [summary]), true);
           exportPartial.hidden = false;
           return;
         }
-        throw new Error(data.error || data.message || t('내보내기 실패 ({0})', [response.status]));
+        throw new Error(
+          tr(data.error) || tr(data.message) || t('gallery.export_failed', [response.status]),
+        );
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -728,10 +729,10 @@ export function createGallery(ctx) {
       const complete = response.headers.get('X-Export-Complete');
       const missingCount = response.headers.get('X-Export-Missing-Count');
       setMessage(
-        t('ZIP 내보내기 완료 · {0}{1}{2}', [
-          exported ? t('{0}장 · ', [exported]) : '',
-          complete === 'false' || allowPartial ? t('부분') : t('전체'),
-          missingCount && Number(missingCount) ? t(' · 누락 {0}개', [missingCount]) : '',
+        t('gallery.zip_export_done', [
+          exported ? t('gallery.images', [exported]) : '',
+          complete === 'false' || allowPartial ? t('gallery.partial') : t('common.all'),
+          missingCount && Number(missingCount) ? t('gallery.missing', [missingCount]) : '',
         ]),
       );
       exportPartial.hidden = true;
@@ -784,7 +785,7 @@ export function createGallery(ctx) {
     const all = node(
       'button',
       `g-tree-item${state.work ? '' : ' active'}`,
-      t('전체 작품 ({0})', [
+      t('gallery.all_works', [
         asList(state.tree?.works).reduce((n, w) => n + Number(w.count || 0), 0),
       ]),
     );
@@ -832,7 +833,7 @@ export function createGallery(ctx) {
       }
     }
     const folders = asList(state.tree?.folders);
-    if (folders.length) treeBox.append(node('h3', 'g-tree-heading', t('기타 폴더')));
+    if (folders.length) treeBox.append(node('h3', 'g-tree-heading', t('gallery.other_folders')));
     for (const folder of folders) {
       const depth = folder.path.split('/').length - 1;
       const name = folder.path.split('/').at(-1);
@@ -846,8 +847,8 @@ export function createGallery(ctx) {
       button.onclick = () => changeFilter('folder', folder.path);
       treeBox.append(button);
     }
-    updateSelect(characterSelect, characterNodes(), t('전체 캐릭터'), state.character);
-    updateSelect(outfitSelect, outfitNodes(), t('전체 의상'), state.outfit);
+    updateSelect(characterSelect, characterNodes(), t('gallery.all_characters'), state.character);
+    updateSelect(outfitSelect, outfitNodes(), t('gallery.all_outfits'), state.outfit);
     // Expression names are derived from currently loaded images; the API tree may also provide them.
     const expressions = asList(state.tree?.expressions).length
       ? state.tree.expressions
@@ -855,7 +856,7 @@ export function createGallery(ctx) {
           id: item.expression_id,
           name: item.expression_name || item.expression_id,
         }));
-    updateSelect(expressionSelect, expressions, t('전체 감정·동작'), state.expression);
+    updateSelect(expressionSelect, expressions, t('gallery.all_expressions'), state.expression);
     categorySelect.value = state.category;
     familySelect.value = state.family;
     sortSelect.value = state.sort;
@@ -931,7 +932,7 @@ export function createGallery(ctx) {
     }
     const requestId = ++state.requestId;
     state.pending = true;
-    count.textContent = t('이미지 불러오는 중…');
+    count.textContent = t('gallery.loading_images');
     try {
       const payload = await ctx.api(`/api/gallery?${paramsFromState()}`);
       if (!state.active || requestId !== state.requestId) return false;
@@ -954,25 +955,24 @@ export function createGallery(ctx) {
         updateBanner.hidden = !previousUpdate;
       }
       state.pending = false;
-      count.textContent = t('이미지를 불러오지 못했습니다.');
+      count.textContent = t('gallery.could_not_load_the_image');
       notice(error);
       return false;
     }
   }
   function renderResults() {
-    count.textContent = t('{0}장 · {1} / {2}페이지', [
+    count.textContent = t('gallery.images_page', [
       state.total.toLocaleString(locale),
       state.page,
       state.pages,
     ]);
-    selectPage.textContent = t('이 페이지 선택 ({0}장)', [state.results.length]);
-    selectFiltered.textContent = t('필터 결과 전체 선택 ({0}장)', [
+    selectPage.textContent = t('gallery.select_this_page_2', [state.results.length]);
+    selectFiltered.textContent = t('gallery.select_all_filtered_2', [
       state.total.toLocaleString(locale),
     ]);
     updateActions();
     grid.replaceChildren();
-    if (!state.results.length)
-      grid.append(node('p', 'g-empty', t('조건에 맞는 이미지가 없습니다.')));
+    if (!state.results.length) grid.append(node('p', 'g-empty', t('gallery.no_images_match')));
     state.results.forEach((item, index) => {
       const card = node('article', 'g-card');
       const checkLabel = node('label', 'g-card-select');
@@ -980,7 +980,7 @@ export function createGallery(ctx) {
       check.type = 'checkbox';
       check.checked = state.chosen.has(identityKey(item));
       check.disabled = !identity(item);
-      check.setAttribute('aria-label', t('{0} 선택', [item.filename || t('이미지')]));
+      check.setAttribute('aria-label', t('common.select', [item.filename || t('gallery.image')]));
       check.addEventListener('change', () => {
         const id = identity(item);
         if (!id) return;
@@ -989,28 +989,28 @@ export function createGallery(ctx) {
         card.classList.toggle('chosen', check.checked);
         updateActions();
       });
-      checkLabel.append(check, node('span', '', t('선택')));
+      checkLabel.append(check, node('span', '', t('gallery.select')));
       card.classList.toggle('chosen', check.checked);
       const open = node('button', 'g-card-open');
       open.type = 'button';
-      open.setAttribute('aria-label', t('{0} 상세 보기', [item.filename || t('이미지')]));
+      open.setAttribute('aria-label', t('gallery.details', [item.filename || t('gallery.image')]));
       const frame = node('span', 'g-card-image');
       const image = node('img');
       image.loading = 'lazy';
       image.decoding = 'async';
-      image.alt = t('{0} 미리보기', [item.filename || t('이미지')]);
+      image.alt = t('gallery.preview', [item.filename || t('gallery.image')]);
       const thumbnail = safeUrl(item.thumbnail_url || item.image_url);
       if (thumbnail) {
         image.src = thumbnail;
         frame.append(image);
       } else {
         frame.classList.add('failed');
-        frame.append(node('span', '', t('미리보기 없음')));
+        frame.append(node('span', '', t('gallery.no_preview')));
       }
       image.onerror = () => {
         frame.classList.add('failed');
         image.remove();
-        frame.append(node('span', '', t('미리보기 없음')));
+        frame.append(node('span', '', t('gallery.no_preview')));
       };
       const caption = node('span', 'g-card-caption');
       const work = asList(state.tree?.works).find(
@@ -1061,11 +1061,11 @@ export function createGallery(ctx) {
       element.onclick = () => goPage(page);
       return element;
     };
-    pagination.append(pageButton(t('이전'), state.page - 1, state.page <= 1));
+    pagination.append(pageButton(t('gallery.previous'), state.page - 1, state.page <= 1));
     const start = Math.max(1, Math.min(state.page - 2, state.pages - 4));
     for (let page = start; page <= Math.min(state.pages, start + 4); page++)
       pagination.append(pageButton(String(page), page, false, page === state.page));
-    pagination.append(pageButton(t('다음'), state.page + 1, state.page >= state.pages));
+    pagination.append(pageButton(t('gallery.next'), state.page + 1, state.page >= state.pages));
   }
   function renderDetailReview(item) {
     const row = (title, ...content) => {
@@ -1074,7 +1074,10 @@ export function createGallery(ctx) {
       return line;
     };
     detailBadges.replaceChildren(
-      row(t('내 판정'), humanChip(item) || node('span', 'g-chip', t('미검수'))),
+      row(
+        t('gallery.my_verdict'),
+        humanChip(item) || node('span', 'g-chip', t('gallery.unreviewed')),
+      ),
     );
     // A stored VLM verdict stays visible here even after review is switched off.
     if (autoOf(item) !== 'pending') {
@@ -1083,10 +1086,12 @@ export function createGallery(ctx) {
         `g-chip auto ${autoOf(item)}`,
         `${autoMark[autoOf(item)]} ${autoLabel[autoOf(item)]}`,
       );
-      detailBadges.append(row(t('VLM 참고'), chip));
+      detailBadges.append(row(t('gallery.vlm_note'), chip));
       if (item.auto_reason) detailBadges.append(node('p', 'g-muted', item.auto_reason));
     } else if (state.vlmEnabled) {
-      detailBadges.append(row(t('VLM 참고'), node('span', 'g-chip', t('아직 검증 전'))));
+      detailBadges.append(
+        row(t('gallery.vlm_note'), node('span', 'g-chip', t('gallery.not_reviewed_yet'))),
+      );
     }
     for (const [verdict, button] of Object.entries(detailButtons))
       button.setAttribute('aria-pressed', String(humanOf(item) === verdict));
@@ -1119,14 +1124,14 @@ export function createGallery(ctx) {
     return section;
   }
   function copyButton(label, value) {
-    const button = node('button', 'g-copy', t('{0} 복사', [label]));
+    const button = node('button', 'g-copy', t('gallery.copy', [label]));
     button.type = 'button';
     button.onclick = async () => {
       try {
         await navigator.clipboard.writeText(String(value));
-        ctx.notify?.(t('{0}를 복사했습니다.', [label]));
+        ctx.notify?.(t('gallery.copied', [label]));
       } catch (error) {
-        ctx.notify?.(t('{0}를 복사할 수 없습니다.', [label]), true);
+        ctx.notify?.(t('gallery.cannot_copy', [label]), true);
       }
     };
     return button;
@@ -1144,11 +1149,9 @@ export function createGallery(ctx) {
   }
   async function renderMetadata(item, itemIndex) {
     const metadataRequestId = ++state.metadataRequestId;
-    detailsBody.replaceChildren(node('p', '', t('제작 기록을 불러오는 중…')));
+    detailsBody.replaceChildren(node('p', '', t('gallery.loading_the_record')));
     if (item.metadata_available === false) {
-      detailsBody.replaceChildren(
-        node('p', 'g-muted', t('이 이미지에는 JSON 제작 기록이 없습니다.')),
-      );
+      detailsBody.replaceChildren(node('p', 'g-muted', t('gallery.this_image_has_no_json_record')));
       return;
     }
     try {
@@ -1165,90 +1168,93 @@ export function createGallery(ctx) {
       const parts = metadata.parts || {};
       detailsBody.replaceChildren();
       detailsBody.append(
-        node('h3', '', t('이미지')),
+        node('h3', '', t('gallery.image')),
         table([
-          [t('파일'), item.filename],
-          [t('생성'), metadata.created_at || item.created_at],
-          [t('작품'), metadata.work_id || item.work_id],
-          [t('캐릭터'), metadata.character_id || item.character_id],
-          [t('의상 세트'), metadata.outfit_id || item.outfit_id],
-          [t('의상 부위'), asList(metadata.outfit_slots || metadata.outfit_parts).join(', ')],
-          [t('감정·동작'), metadata.expression_name || item.expression_id],
-          [t('구분'), metadata.category || item.category],
-          [t('크기'), asList(metadata.image_size).join(' × ')],
-          [t('배치 ID'), metadata.batch_id],
+          [t('common.file'), item.filename],
+          [t('common.generate'), metadata.created_at || item.created_at],
+          [t('common.work'), metadata.work_id || item.work_id],
+          [t('common.character'), metadata.character_id || item.character_id],
+          [t('common.outfit_set'), metadata.outfit_id || item.outfit_id],
+          [
+            t('gallery.outfit_slots'),
+            asList(metadata.outfit_slots || metadata.outfit_parts).join(', '),
+          ],
+          [t('common.expression'), metadata.expression_name || item.expression_id],
+          [t('gallery.rating'), metadata.category || item.category],
+          [t('common.size'), asList(metadata.image_size).join(' × ')],
+          [t('gallery.batch_id'), metadata.batch_id],
         ]),
       );
       if (metadata.generation_preset)
         detailsBody.append(
-          node('h3', '', t('생성 프리셋')),
+          node('h3', '', t('gallery.generation_presets')),
           table([
-            [t('이름'), metadata.generation_preset.name],
+            [t('common.name'), metadata.generation_preset.name],
             ['ID', metadata.generation_preset.id],
             [
-              t('설정 수정'),
+              t('gallery.edit_settings'),
               metadata.generation_preset.settings_modified === true
-                ? t('사용자 수정')
-                : t('원본 사용'),
+                ? t('gallery.edited_by_you')
+                : t('gallery.use_original'),
             ],
           ]),
         );
       detailsBody.append(
-        node('h3', '', t('생성 설정')),
+        node('h3', '', t('common.generation_settings')),
         table([
-          [t('모델'), settings.model],
-          [t('텍스트 인코더'), settings.text_encoder],
+          [t('common.model'), settings.model],
+          [t('common.text_encoder'), settings.text_encoder],
           ['VAE', settings.vae],
-          [t('CLIP 유형'), settings.clip_type],
-          [t('단계'), settings.steps],
+          [t('common.clip_type'), settings.clip_type],
+          [t('gallery.step'), settings.steps],
           ['CFG', settings.cfg],
-          [t('샘플러'), settings.sampler],
-          [t('스케줄러'), settings.scheduler],
-          [t('시드'), metadata.seed ?? settings.seed],
-          [t('가로'), settings.width],
-          [t('세로'), settings.height],
+          [t('common.sampler'), settings.sampler],
+          [t('common.scheduler'), settings.scheduler],
+          [t('common.seed'), metadata.seed ?? settings.seed],
+          [t('common.width'), settings.width],
+          [t('common.height'), settings.height],
         ]),
       );
       if (
         (metadata.seed !== undefined && metadata.seed !== null) ||
         (settings.seed !== undefined && settings.seed !== null)
       )
-        detailsBody.append(copyButton(t('시드'), metadata.seed ?? settings.seed));
+        detailsBody.append(copyButton(t('common.seed'), metadata.seed ?? settings.seed));
       if (asList(settings.loras).length) {
         detailsBody.append(node('h3', '', 'LoRA'));
         for (const lora of settings.loras)
           detailsBody.append(
             table([
-              [t('이름'), lora.name],
-              [t('모델 강도'), lora.strength_model],
-              [t('CLIP 강도'), lora.strength_clip],
+              [t('common.name'), lora.name],
+              [t('common.model_strength'), lora.strength_model],
+              [t('common.clip_strength'), lora.strength_clip],
             ]),
           );
       }
-      detailsBody.append(node('h3', '', t('프롬프트 구성')));
+      detailsBody.append(node('h3', '', t('gallery.prompt_layout')));
       for (const [key, label] of [
-        ['work', t('작품 공통')],
-        ['common', t('공통 긍정')],
-        ['quality', t('품질')],
-        ['artist', t('화풍')],
-        ['composition', t('구도')],
-        ['appearance', t('외형')],
-        ['expression', t('감정·동작')],
-        ['outfit', t('의상')],
-        ['negative', t('제외 요소')],
+        ['work', t('gallery.work_wide')],
+        ['common', t('common.common_positive')],
+        ['quality', t('common.quality')],
+        ['artist', t('common.style')],
+        ['composition', t('common.composition')],
+        ['appearance', t('common.appearance')],
+        ['expression', t('common.expression')],
+        ['outfit', t('common.outfit')],
+        ['negative', t('gallery.negatives')],
       ]) {
         if (parts[key]) detailsBody.append(textSection(label, parts[key]));
       }
       detailsBody.append(
-        textSection(t('긍정 프롬프트 원문'), metadata.positive, true),
-        textSection(t('부정 프롬프트 원문'), metadata.negative),
+        textSection(t('gallery.positive_prompt_text'), metadata.positive, true),
+        textSection(t('gallery.negative_prompt_text'), metadata.negative),
       );
       if (metadata.positive !== undefined && metadata.positive !== null)
-        detailsBody.append(copyButton(t('긍정 프롬프트'), metadata.positive));
+        detailsBody.append(copyButton(t('common.positive_prompt'), metadata.positive));
       if (metadata.negative !== undefined && metadata.negative !== null)
-        detailsBody.append(copyButton(t('부정 프롬프트'), metadata.negative));
+        detailsBody.append(copyButton(t('gallery.negative_prompt'), metadata.negative));
       if (metadata.workflow) {
-        const workflowButton = node('button', 'g-button', t('워크플로 JSON 다운로드'));
+        const workflowButton = node('button', 'g-button', t('gallery.download_workflow_json'));
         workflowButton.type = 'button';
         workflowButton.onclick = () =>
           downloadJson(
@@ -1257,7 +1263,7 @@ export function createGallery(ctx) {
           );
         detailsBody.append(workflowButton);
       }
-      const metadataButton = node('button', 'g-button', t('제작 기록 JSON 다운로드'));
+      const metadataButton = node('button', 'g-button', t('gallery.download_record_json'));
       metadataButton.type = 'button';
       metadataButton.onclick = () =>
         downloadJson(metadata, `${(item.filename || 'image').replace(/\.[^.]+$/, '')}.json`);
@@ -1269,8 +1275,8 @@ export function createGallery(ctx) {
         metadataRequestId !== state.metadataRequestId
       )
         return;
-      detailsBody.replaceChildren(node('p', 'g-muted', t('제작 기록을 열 수 없습니다.')));
-      const retry = node('button', 'g-button', t('다시 시도'));
+      detailsBody.replaceChildren(node('p', 'g-muted', t('gallery.cannot_open_the_record')));
+      const retry = node('button', 'g-button', t('gallery.retry'));
       retry.type = 'button';
       retry.onclick = () => renderMetadata(item, itemIndex);
       detailsBody.append(retry);
@@ -1282,21 +1288,21 @@ export function createGallery(ctx) {
     state.selected = index;
     state.fullSize = false;
     imageScroll.classList.remove('full-size');
-    zoom.textContent = t('100% 보기');
+    zoom.textContent = t('gallery.view_at_100');
     imageScroll.scrollTop = 0;
     imageScroll.scrollLeft = 0;
     const imageUrl = safeUrl(item.image_url);
     if (imageUrl) fullImage.src = imageUrl;
     else fullImage.removeAttribute('src');
-    fullImage.alt = t('{0} 원본', [item.filename || t('이미지')]);
+    fullImage.alt = t('gallery.original', [item.filename || t('gallery.image')]);
     viewerCaption.textContent = imageUrl
-      ? t('{0} · {1}페이지 {2}/{3}', [
-          item.filename || t('이미지'),
+      ? t('gallery.page', [
+          item.filename || t('gallery.image'),
           state.page,
           index + 1,
           state.dialogItems.length,
         ])
-      : t('이미지 주소를 열 수 없습니다.');
+      : t('gallery.cannot_open_the_image_address');
     prev.disabled = state.page === 1 && index === 0;
     next.disabled = state.page === state.pages && index === state.dialogItems.length - 1;
     renderDetailReview(item);
@@ -1368,7 +1374,7 @@ export function createGallery(ctx) {
   zoom.onclick = () => {
     state.fullSize = !state.fullSize;
     imageScroll.classList.toggle('full-size', state.fullSize);
-    zoom.textContent = state.fullSize ? t('화면에 맞춤') : t('100% 보기');
+    zoom.textContent = state.fullSize ? t('common.fit_to_screen') : t('gallery.view_at_100');
   };
   imageScroll.addEventListener('pointerdown', (event) => {
     if (!state.fullSize) return;

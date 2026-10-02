@@ -99,10 +99,10 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(self.studio.compose(request())['warnings'], [])
         result = self.studio.compose(request(settings={'family': 'sdxl'}))
         self.assertEqual(result['model_family'], 'sdxl')
-        self.assertTrue(any(w.startswith('작품') for w in result['warnings']))
+        self.assertTrue(any(w.startswith('Work') for w in result['warnings']))
         self.store.save_work({'id': 'W001', 'name': 'Work', 'model_family': 'shared'})
         result = self.studio.compose(request(settings={'family': 'sdxl'}))
-        self.assertFalse(any(w.startswith('작품') for w in result['warnings']))
+        self.assertFalse(any(w.startswith('Work') for w in result['warnings']))
 
     def test_selected_outfit_slots_only(self):
         result = self.studio.compose(request(outfit_slots=['top', 'hands']))

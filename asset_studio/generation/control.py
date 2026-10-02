@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from ..i18n import Msg, message_of
 from ..library.service import Library
 from ..util import settings_file
 
@@ -39,7 +40,7 @@ class ComfyControl:
             connected = True
             error = None
         except Exception as exc:
-            stats, queue, connected, error = {}, {}, False, str(exc)
+            stats, queue, connected, error = {}, {}, False, message_of(exc)
         owned = self.process is not None and self.process.poll() is None
         return {
             'connected': connected,
@@ -59,18 +60,37 @@ class ComfyControl:
 
     def save(self, body):
         if self.preview:
-            raise ValueError('미리보기 서버에서는 ComfyUI 연결 설정을 변경하지 않습니다.')
+            raise ValueError(
+                Msg(
+                    'server.control.the_preview_server_does_not_change',
+                    'The preview server does not change the ComfyUI connection.',
+                )
+            )
         with self.lock, self.studio.lock:
             if self.studio.gpu.busy_except('comfy_control'):
                 raise ValueError(
-                    f'GPU를 {self.studio.gpu.label()}이(가) 쓰고 있습니다. 끝난 뒤에 바꾸세요.'
+                    Msg(
+                        'server.control.the_gpu_is_in_use_by',
+                        'The GPU is in use by {name}. Change this after it finishes.',
+                        name=self.studio.gpu.label(),
+                    )
                 )
             if self.operation or self.process is not None and self.process.poll() is None:
-                raise ValueError('관리 중인 ComfyUI를 종료한 다음 연결 설정을 변경하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.control.stop_the_comfyui_this_app_started',
+                        'Stop the ComfyUI this app started before changing the connection.',
+                    )
+                )
             if any(j['status'] in ('running', 'cancelling') for j in self.studio.jobs) or (
                 not self.studio.paused and any(j['status'] == 'queued' for j in self.studio.jobs)
             ):
-                raise ValueError('큐가 실행 중입니다. 연결 설정은 작업이 끝난 후 변경하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.control.the_queue_is_running_change_the',
+                        'The queue is running. Change the connection after it finishes.',
+                    )
+                )
             config = copy.deepcopy(self.config)
             config.update({k: body[k] for k in config if k in body})
             parsed = urlparse(config['url'])
@@ -83,18 +103,35 @@ class ComfyControl:
                 or parsed.query
                 or parsed.fragment
             ):
-                raise ValueError('로컬 ComfyUI의 http 주소를 입력하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.control.enter_the_http_address_of_your',
+                        'Enter the http address of your local ComfyUI.',
+                    )
+                )
             if not parsed.port:
-                raise ValueError('ComfyUI 포트를 지정하세요.')
+                raise ValueError(
+                    Msg('server.control.set_the_comfyui_port', 'Set the ComfyUI port.')
+                )
             if not isinstance(config['arguments'], list) or not all(
                 isinstance(x, str) and len(x) < 1000 for x in config['arguments']
             ):
-                raise ValueError('실행 인자는 문자열 배열이어야 합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.control.launch_arguments_must_be_an_array',
+                        'Launch arguments must be an array of text.',
+                    )
+                )
             if (
                 not Path(config['python_path']).is_file()
                 or not (Path(config['comfy_path']) / 'main.py').is_file()
             ):
-                raise ValueError('Python 또는 ComfyUI main.py 경로를 확인하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.control.check_the_python_or_comfyui_main',
+                        'Check the Python or ComfyUI main.py path.',
+                    )
+                )
             if self.path.exists():
                 Library.write(
                     self.studio.root
@@ -109,21 +146,40 @@ class ComfyControl:
 
     def control(self, action):
         if self.preview:
-            raise ValueError('미리보기에서는 실행 중인 ComfyUI를 제어하지 않습니다.')
+            raise ValueError(
+                Msg(
+                    'server.control.the_preview_does_not_control_a',
+                    'The preview does not control a running ComfyUI.',
+                )
+            )
         if action not in ('start', 'stop', 'restart'):
-            raise ValueError('지원하지 않는 실행 명령입니다.')
+            raise ValueError(
+                Msg('server.control.unsupported_control_command', 'Unsupported control command.')
+            )
         with self.lock:
             if self.operation:
-                raise ValueError('이미 실행 제어 작업이 진행 중입니다.')
+                raise ValueError(
+                    Msg(
+                        'server.control.a_control_action_is_already_running',
+                        'A control action is already running.',
+                    )
+                )
             if self.studio.gpu.busy_except('comfy_control'):
                 raise ValueError(
-                    f'GPU를 {self.studio.gpu.label()}이(가) 쓰고 있습니다. 끝난 뒤에 하세요.'
+                    Msg(
+                        'server.control.the_gpu_is_in_use_by_2',
+                        'The GPU is in use by {name}. Try again after it finishes.',
+                        name=self.studio.gpu.label(),
+                    )
                 )
             status = self.status()
             if not status['can_' + action]:
                 raise ValueError(
-                    '현재 프로세스는 실행 제어할 수 없습니다. '
-                    'Stability Matrix에서 시작한 ComfyUI는 해당 앱에서 관리하세요.'
+                    Msg(
+                        'server.control.this_process_cannot_be_controlled_manage',
+                        'This process cannot be controlled. Manage a ComfyUI started elsewhere '
+                        '(for example Stability Matrix) from that app.',
+                    )
                 )
             self.operation = action
             self.error = None
@@ -131,7 +187,11 @@ class ComfyControl:
             if not self.studio.gpu.acquire('comfy_control', action):
                 self.operation = None
                 raise ValueError(
-                    f'GPU를 {self.studio.gpu.label()}이(가) 쓰고 있습니다. 끝난 뒤에 하세요.'
+                    Msg(
+                        'server.control.the_gpu_is_in_use_by_2',
+                        'The GPU is in use by {name}. Try again after it finishes.',
+                        name=self.studio.gpu.label(),
+                    )
                 )
             threading.Thread(target=self._run, args=(action,), daemon=True).start()
         return {'ok': True, 'operation': action}
@@ -141,10 +201,20 @@ class ComfyControl:
         python = Path(config['python_path'])
         folder = Path(config['comfy_path'])
         if not python.is_file() or not (folder / 'main.py').is_file():
-            raise ValueError('Python 또는 ComfyUI 경로가 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.control.the_python_or_comfyui_path_is',
+                    'The Python or ComfyUI path is missing.',
+                )
+            )
         # Probe again immediately before spawning; never launch over an external server.
         if self.status()['connected']:
-            raise ValueError('다른 ComfyUI가 이미 연결되어 있습니다.')
+            raise ValueError(
+                Msg(
+                    'server.control.another_comfyui_is_already_connected',
+                    'Another ComfyUI is already connected.',
+                )
+            )
         args = list(config['arguments'])
         if '--port' not in args:
             args += ['--port', str(urlparse(config['url']).port)]
@@ -163,11 +233,21 @@ class ComfyControl:
             )
         for _ in range(180):
             if self.process.poll() is not None:
-                raise RuntimeError('ComfyUI 시작 실패: logs/comfy-managed.log를 확인하세요.')
+                raise RuntimeError(
+                    Msg(
+                        'server.control.comfyui_failed_to_start_check_logs',
+                        'ComfyUI failed to start: check logs/comfy-managed.log.',
+                    )
+                )
             if self.status()['connected']:
                 return
             time.sleep(1)
-        raise RuntimeError('ComfyUI 연결 대기 시간이 초과되었습니다. 로그를 확인하세요.')
+        raise RuntimeError(
+            Msg(
+                'server.control.timed_out_waiting_for_comfyui_check',
+                'Timed out waiting for ComfyUI. Check the log.',
+            )
+        )
 
     def _run(self, action):
         succeeded = False
@@ -190,7 +270,11 @@ class ComfyControl:
                     time.sleep(1)
                 else:
                     raise RuntimeError(
-                        '현재 이미지 완료를 기다리는 시간이 초과되어 실행 제어를 취소했습니다.'
+                        Msg(
+                            'server.control.timed_out_waiting_for_the_current',
+                            'Timed out waiting for the current image, so the control action was '
+                            'cancelled.',
+                        )
                     )
                 if self.process is not None and self.process.poll() is None:
                     self.process.terminate()
@@ -201,7 +285,7 @@ class ComfyControl:
                 self._start()
             succeeded = True
         except Exception as exc:
-            self.error = str(exc)
+            self.error = message_of(exc)
         finally:
             # A deliberate stop must not make the next queued job fail against an
             # offline server, so the GPU stays held until a start succeeds.

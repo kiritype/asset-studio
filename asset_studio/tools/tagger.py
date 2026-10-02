@@ -11,6 +11,7 @@ import uuid
 import zipfile
 from pathlib import PurePosixPath
 
+from ..i18n import Msg
 from ..util import now
 
 NODE = 'WD14Tagger|pysssss'
@@ -24,11 +25,21 @@ def tag_settings(body, models):
         if body.get(key) is not None:
             settings[key] = body[key]
     if models and settings['model'] not in models:
-        raise ValueError('태거 모델을 목록에서 고르세요.')
+        raise ValueError(
+            Msg(
+                'server.tagger.choose_a_tagger_model_from_the',
+                'Choose a tagger model from the list.',
+            )
+        )
     for key in ('threshold', 'character_threshold'):
         value = settings[key]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
-            raise ValueError('임계값은 0~1 사이여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.tagger.thresholds_must_be_between_0_and',
+                    'Thresholds must be between 0 and 1.',
+                )
+            )
         settings[key] = float(value)
     return settings
 
@@ -55,7 +66,9 @@ def tags_of(entry):
     """Tag list from a finished history entry; the node returns one joined string."""
     texts = (entry.get('outputs', {}).get('2') or {}).get('tags') or []
     if not texts:
-        raise RuntimeError('태거가 결과를 돌려주지 않았습니다.')
+        raise RuntimeError(
+            Msg('server.tagger.the_tagger_returned_no_result', 'The tagger returned no result.')
+        )
     return [
         t.strip().replace('\\(', '(').replace('\\)', ')') for t in texts[0].split(',') if t.strip()
     ]
@@ -89,7 +102,11 @@ class TaggerMixin:
         except Exception as error:
             return {
                 'available': False,
-                'error': f'WD14 태거 노드를 찾지 못했습니다: {error}',
+                'error': Msg(
+                    'server.tagger.wd14_tagger_node_not_found',
+                    'WD14 tagger node not found: {error}',
+                    error=error,
+                ),
                 'exclude': exclude,
             }
 
@@ -100,7 +117,11 @@ class TaggerMixin:
         pair up when extracted together; ``json`` is one file with every image.
         """
         if kind not in ('txt', 'json'):
-            raise ValueError('내보내기 형식은 txt 또는 json입니다.')
+            raise ValueError(
+                Msg(
+                    'server.tagger.the_export_format_is_txt_or', 'The export format is txt or json.'
+                )
+            )
         skip = {norm(tag) for tag in self.tag_excludes()}
         rows = []
         for item, name in self.tools.zip_names(ids):
@@ -109,7 +130,12 @@ class TaggerMixin:
             tags = [tag for tag in item['tags']['tags'] if norm(tag) not in skip]
             rows.append((item, name, tags))
         if not rows:
-            raise ValueError('고른 이미지 중 태그를 분석한 것이 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.tagger.none_of_the_chosen_images_has',
+                    'None of the chosen images has been tagged.',
+                )
+            )
         if kind == 'json':
             data = [
                 {
@@ -133,7 +159,13 @@ class TaggerMixin:
     def enqueue_tags(self, body):
         ids = body.get('ids')
         if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_IDS:
-            raise ValueError(f'태그를 읽을 이미지를 1~{MAX_IDS}장 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.tagger.choose_1_to_images_to_tag',
+                    'Choose 1 to {max_ids} images to tag.',
+                    max_ids=MAX_IDS,
+                )
+            )
         info = self.tagger_info()
         if not info['available']:
             raise ValueError(info['error'])
@@ -145,7 +177,7 @@ class TaggerMixin:
                 kind='tag',
                 status='queued',
                 created_at=now(),
-                title=f'태그 분석 · {item["name"]}',
+                title=Msg('server.tagger.tagging', 'Tagging · {name}', name=item['name']),
                 tool_item=item['id'],
                 tag_settings=settings,
                 seed=None,
@@ -156,7 +188,12 @@ class TaggerMixin:
         ]
         with self.lock:
             if sum(j['status'] == 'queued' for j in self.jobs) + len(prepared) > 5000:
-                raise ValueError('대기 작업이 너무 많습니다. 기존 작업을 먼저 처리하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.tagger.too_many_queued_jobs_let_the',
+                        'Too many queued jobs. Let the queue run first.',
+                    )
+                )
             self.jobs.extend(prepared)
             self.persist()
         return {

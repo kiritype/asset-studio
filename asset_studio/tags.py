@@ -14,6 +14,7 @@ import os
 import threading
 from pathlib import Path
 
+from .i18n import Msg
 from .util import settings_file
 
 CATEGORIES = {'0': 'general', '1': 'artist', '3': 'copyright', '4': 'character', '5': 'meta'}
@@ -136,7 +137,9 @@ class TagLookup:
             if self._index is None and not self._error:
                 folder = data_dir(self.root)
                 if folder is None or not (Path(folder) / TAGS_FILE).is_file():
-                    self._error = 'Danbooru 태그 데이터를 찾지 못했습니다.'
+                    self._error = Msg(
+                        'server.tags.danbooru_tag_data_not_found', 'Danbooru tag data not found.'
+                    )
                 else:
                     self._index = TagIndex(folder)
             return self._index

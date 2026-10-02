@@ -73,9 +73,9 @@ const checkbox = (checked, onChange) => {
 const scopeBadge = (scope, text = SCOPE_LABELS[scope]) => {
   const n = el('small', `jobs-scope jobs-scope-${scope}`, text);
   n.title = {
-    global: t('전역: 어느 작품·캐릭터에서나 쓰는 조각'),
-    work: t('작품 공용: 이 작품의 모든 캐릭터가 쓰는 조각'),
-    character: t('캐릭터 귀속: 이 캐릭터만 쓰는 조각'),
+    global: t('jobs.global_a_piece_any_work_or'),
+    work: t('jobs.shared_in_work_a_piece_every'),
+    character: t('jobs.character_a_piece_only_this_character'),
   }[scope];
   return n;
 };
@@ -107,16 +107,16 @@ const defaults = () => ({
   overrideEnabled: {},
 });
 const OVERRIDES = [
-  ['appearance', t('외형'), 'target'],
-  ['outfit', t('의상'), 'target'],
-  ['expression', t('감정·동작'), 'expression'],
-  ['composition', t('구도'), 'expression'],
-  ['negative', t('전체 제외 프롬프트'), 'both'],
+  ['appearance', t('common.appearance'), 'target'],
+  ['outfit', t('common.outfit'), 'target'],
+  ['expression', t('common.expression'), 'expression'],
+  ['composition', t('common.composition'), 'expression'],
+  ['negative', t('jobs.whole_negative_prompt'), 'both'],
 ];
 const OVERRIDE_HINT = {
-  target: t('캐릭터와 의상 세트를 하나씩 선택하면 사용할 수 있습니다.'),
-  expression: t('감정·동작 하나를 선택하면 사용할 수 있습니다.'),
-  both: t('캐릭터, 의상 세트, 감정·동작을 각각 하나씩 선택하면 사용할 수 있습니다.'),
+  target: t('jobs.available_when_one_character_and_one'),
+  expression: t('jobs.available_when_one_expression_is_selected'),
+  both: t('jobs.available_when_one_character_one_outfit'),
 };
 // Draft fields a combination preset stores and restores (characters and outfits stay).
 const COMBINATION_FIELDS = [
@@ -204,24 +204,29 @@ export function createJobs(ctx) {
   root.id = 'app-jobs';
   const header = el('header', 'jobs-header');
   header.append(
-    el('h1', '', t('이미지 생성')),
-    btn(t('프롬프트 라이브러리'), () => ctx.navigate?.('/prompts'), 'jobs-muted'),
+    el('h1', '', t('common.image_generation')),
+    btn(t('common.prompt_library'), () => ctx.navigate?.('/prompts'), 'jobs-muted'),
   );
   const aside = el('aside', 'jobs-aside');
   const main = el('main', 'jobs-main');
   const workSelect = el('select');
   const search = input();
   search.type = 'search';
-  search.placeholder = t('캐릭터 검색');
+  search.placeholder = t('jobs.search_characters');
   const tree = el('div', 'jobs-tree');
   const characterButtons = el('div', 'jobs-row');
   characterButtons.append(
-    btn(t('전체 선택'), () => chooseCharacters(true), 'jobs-muted'),
-    btn(t('선택 해제'), () => chooseCharacters(false), 'jobs-muted'),
+    btn(t('common.select_all'), () => chooseCharacters(true), 'jobs-muted'),
+    btn(t('common.clear_selection'), () => chooseCharacters(false), 'jobs-muted'),
   );
   workSelect.disabled = true;
   search.disabled = true;
-  aside.append(label(t('작품'), workSelect), label(t('검색'), search), characterButtons, tree);
+  aside.append(
+    label(t('common.work'), workSelect),
+    label(t('common.search'), search),
+    characterButtons,
+    tree,
+  );
   const status = el('p', 'jobs-status');
   status.setAttribute('role', 'status');
   const summary = el('section', 'jobs-card jobs-summary');
@@ -404,7 +409,7 @@ export function createJobs(ctx) {
       await loadCatalog();
       await loadVersion();
     } catch (error) {
-      notify(t('작품을 불러오지 못했습니다: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_load_the_work', [message(error)]), true);
     }
   }
 
@@ -427,7 +432,7 @@ export function createJobs(ctx) {
   function renderCharacters() {
     tree.replaceChildren();
     if (!state.catalog) {
-      tree.append(el('p', 'jobs-empty', t('작품을 선택하세요.')));
+      tree.append(el('p', 'jobs-empty', t('jobs.choose_a_work')));
       return;
     }
     const shown = characters().filter(
@@ -452,7 +457,7 @@ export function createJobs(ctx) {
       row.append(check, caption);
       tree.append(row);
     }
-    if (!shown.length) tree.append(el('p', 'jobs-empty', t('캐릭터가 없습니다.')));
+    if (!shown.length) tree.append(el('p', 'jobs-empty', t('jobs.no_characters')));
   }
   /** Tick or untick every character currently listed (the search narrows the list). */
   function chooseCharacters(on) {
@@ -478,17 +483,17 @@ export function createJobs(ctx) {
   function outfitCaption(choice, total) {
     const [[name]] = [...choice.names].sort((a, b) => b[1] - a[1]);
     const tags = [];
-    if (choice.names.size > 1) tags.push(t('캐릭터마다 이름 다름'));
-    if (choice.defaults === total) tags.push(t('기본'));
-    else if (choice.defaults) tags.push(t('기본 {0}명', [choice.defaults]));
-    if (choice.owners < total) tags.push(t('{0}명 중 {1}명', [total, choice.owners]));
+    if (choice.names.size > 1) tags.push(t('jobs.names_differ_by_character'));
+    if (choice.defaults === total) tags.push(t('jobs.default'));
+    else if (choice.defaults) tags.push(t('jobs.default_for', [choice.defaults]));
+    if (choice.owners < total) tags.push(t('jobs.of', [total, choice.owners]));
     return [`${name} · ${choice.id}`, ...tags].join(' · ');
   }
   function renderOutfits() {
-    outfitSection.replaceChildren(el('h2', '', t('의상 세트')));
+    outfitSection.replaceChildren(el('h2', '', t('common.outfit_set')));
     const total = chosenCharacters().length;
     if (!total) {
-      outfitSection.append(el('p', 'jobs-note', t('왼쪽에서 캐릭터를 선택하세요.')));
+      outfitSection.append(el('p', 'jobs-note', t('jobs.select_characters_on_the_left')));
       return;
     }
     const choices = outfitChoices();
@@ -509,25 +514,17 @@ export function createJobs(ctx) {
         if (choice.scopes.has(scope)) row.append(scopeBadge(scope));
       list.append(row);
     }
-    if (!choices.length) list.append(el('p', 'jobs-empty', t('의상 세트가 없습니다.')));
+    if (!choices.length) list.append(el('p', 'jobs-empty', t('jobs.no_outfit_sets')));
     outfitSection.append(list);
     if (total > 1)
-      outfitSection.append(
-        el(
-          'p',
-          'jobs-note',
-          t(
-            '같은 코드의 의상 세트를 선택한 캐릭터 각각에 적용합니다. 그 코드가 없는 캐릭터는 건너뜁니다.',
-          ),
-        ),
-      );
+      outfitSection.append(el('p', 'jobs-note', t('jobs.applies_the_outfit_set_with_this')));
     outfitSection.append(slotSection);
   }
 
   // ---- outfit slots -----------------------------------------------------------------
 
   function renderSlots() {
-    slotSection.replaceChildren(el('h3', '', t('넣을 부위')));
+    slotSection.replaceChildren(el('h3', '', t('jobs.slots_to_include')));
     const targets = chosenTargets();
     const slots = orderedLevels(
       categories(),
@@ -535,15 +532,11 @@ export function createJobs(ctx) {
       targets.flatMap((target) => Object.keys(target.outfitSet.slots || {})),
     ).filter((slot) => slot !== 'full');
     if (!targets.length) {
-      slotSection.append(
-        el('p', 'jobs-note', t('의상 세트를 체크하면 넣을 부위를 고를 수 있습니다.')),
-      );
+      slotSection.append(el('p', 'jobs-note', t('jobs.tick_an_outfit_set_to_choose')));
       return;
     }
     if (!slots.length) {
-      slotSection.append(
-        el('p', 'jobs-note', t('선택한 의상 세트는 부위로 나뉘어 있지 않아 전체를 씁니다.')),
-      );
+      slotSection.append(el('p', 'jobs-note', t('jobs.the_selected_outfit_set_has_no')));
       return;
     }
     const row = el('div', 'jobs-checks');
@@ -567,23 +560,19 @@ export function createJobs(ctx) {
     const suggestion = slotSuggestion();
     const names = (list) => list.map((slot) => levelLabel(categories(), 'outfit', slot)).join(', ');
     const note = !suggestion.names.length
-      ? t(
-          '감정을 선택하면 그 구도가 제안하는 부위가 체크됩니다. 체크하지 않은 부위는 프롬프트에서 빠집니다.',
-        )
+      ? t('jobs.choosing_an_expression_ticks_the_slots')
       : suggestion.agreed
-        ? t('구도({0})의 제안: {1}', [
+        ? t('jobs.suggested_by_composition', [
             suggestion.names.join(' / '),
-            suggestion.slots ? names(suggestion.slots) : t('전체'),
+            suggestion.slots ? names(suggestion.slots) : t('common.all'),
           ])
-        : t(
-            '선택한 감정들의 구도가 제안하는 부위가 서로 달라 전체를 체크했습니다. 필요한 부위만 남기세요.',
-          );
+        : t('jobs.the_selected_expressions_suggest_different_slots');
     const hint = el('div', 'jobs-row');
     hint.append(el('p', 'jobs-note', note));
     if (suggestion.agreed && state.draft.slotsTouched)
       hint.append(
         btn(
-          t('제안대로'),
+          t('jobs.as_suggested'),
           () => {
             applySuggestion();
             persist();
@@ -595,18 +584,14 @@ export function createJobs(ctx) {
       );
     slotSection.append(hint);
     if (state.draft.slots && !state.draft.slots.length)
-      slotSection.append(
-        el('p', 'jobs-error', t('부위를 하나도 고르지 않으면 의상 세트 전체를 씁니다.')),
-      );
+      slotSection.append(el('p', 'jobs-error', t('jobs.with_no_slot_ticked_the_whole')));
     const whole = targets.filter((target) => target.outfitSet.slots?.full);
     if (whole.length)
       slotSection.append(
         el(
           'p',
           'jobs-note',
-          t('부위로 나뉘지 않은 세트({0})는 항상 전체를 씁니다.', [
-            whole.map((t) => t.key).join(', '),
-          ]),
+          t('jobs.sets_without_slots_always_use_the', [whole.map((t) => t.key).join(', ')]),
         ),
       );
   }
@@ -614,7 +599,7 @@ export function createJobs(ctx) {
   // ---- expressions ------------------------------------------------------------------
 
   function renderExpressions() {
-    expressionSection.replaceChildren(el('h2', '', t('감정·동작')));
+    expressionSection.replaceChildren(el('h2', '', t('common.expression')));
     const controls = el('div', 'jobs-row');
     const ratings = orderedLevels(categories(), 'expression', [
       ...arr(categories()?.roles?.expression?.order),
@@ -629,7 +614,10 @@ export function createJobs(ctx) {
       renderExpressions();
     });
     const sets = select(
-      [['', t('직접 선택')], ...presets('expression_set').map((p) => [p.id, p.name || p.id])],
+      [
+        ['', t('jobs.choose_manually')],
+        ...presets('expression_set').map((p) => [p.id, p.name || p.id]),
+      ],
       state.draft.expressionSet,
     );
     sets.addEventListener('change', () => {
@@ -641,7 +629,7 @@ export function createJobs(ctx) {
     });
     const choices = expressionChoices().filter((c) => c.piece.rating === state.draft.rating);
     const all = btn(
-      t('이 분류 전체 선택'),
+      t('jobs.select_all_in_this_category'),
       () => {
         state.draft.expressions = [
           ...new Set([...state.draft.expressions, ...choices.map((c) => c.piece.id)]),
@@ -653,7 +641,7 @@ export function createJobs(ctx) {
       'jobs-muted',
     );
     const none = btn(
-      t('선택 해제'),
+      t('common.clear_selection'),
       () => {
         state.draft.expressions = [];
         state.draft.expressionSet = '';
@@ -662,7 +650,7 @@ export function createJobs(ctx) {
       },
       'jobs-muted',
     );
-    controls.append(label(t('분류'), rating), label(t('묶음'), sets), all, none);
+    controls.append(label(t('jobs.category'), rating), label(t('jobs.set'), sets), all, none);
     expressionSection.append(controls);
     const list = el('div', 'jobs-expressions');
     for (const {piece, only} of choices) {
@@ -680,13 +668,14 @@ export function createJobs(ctx) {
       row.append(
         check,
         el('span', '', caption),
-        scopeBadge(piece.scope, only ? t('{0} 전용', [only]) : undefined),
+        scopeBadge(piece.scope, only ? t('jobs.only', [only]) : undefined),
         familyBadge(piece),
       );
       row.title = caption;
       list.append(row);
     }
-    if (!choices.length) list.append(el('p', 'jobs-empty', t('이 분류에 감정·동작이 없습니다.')));
+    if (!choices.length)
+      list.append(el('p', 'jobs-empty', t('jobs.no_expressions_in_this_category')));
     expressionSection.append(list);
   }
 
@@ -715,18 +704,18 @@ export function createJobs(ctx) {
       row.title = lines(piece.prompt).replace(/\n/g, ', ');
       list.append(row);
     }
-    if (!pieces.length) list.append(el('p', 'jobs-empty', t('조각이 없습니다.')));
+    if (!pieces.length) list.append(el('p', 'jobs-empty', t('jobs.no_pieces')));
     box.append(list);
     return box;
   }
   function renderPieces() {
-    pieceSection.replaceChildren(el('h2', '', t('구도 · 화풍 · 공통')));
+    pieceSection.replaceChildren(el('h2', '', t('jobs.composition_style_common')));
     const compositions = visiblePieces(state.catalog, null, 'composition').filter((piece) =>
       fitsFamily(piece, family()),
     );
     const composition = select(
       [
-        ['', t('감정별 기본 구도')],
+        ['', t('jobs.each_expression_s_own_composition')],
         ...compositions.map((p) => [
           p.id,
           `${p.name || p.id} · ${p.id} (${SCOPE_LABELS[p.scope]})`,
@@ -742,14 +731,10 @@ export function createJobs(ctx) {
       renderOverrides();
     });
     pieceSection.append(
-      label(
-        t('구도'),
-        composition,
-        t('고르면 모든 감정에 이 구도를 씁니다. 고르지 않으면 각 감정에 지정된 구도를 씁니다.'),
-      ),
-      pieceChecks(t('화풍'), 'artist', 'artists'),
-      pieceChecks(t('공통 긍정'), 'common/positive', 'commonPositive'),
-      pieceChecks(t('공통 제외'), 'common/negative', 'commonNegative'),
+      label(t('common.composition'), composition, t('jobs.if_chosen_every_expression_uses_this')),
+      pieceChecks(t('common.style'), 'artist', 'artists'),
+      pieceChecks(t('common.common_positive'), 'common/positive', 'commonPositive'),
+      pieceChecks(t('jobs.common_negative'), 'common/negative', 'commonNegative'),
     );
   }
 
@@ -763,23 +748,21 @@ export function createJobs(ctx) {
     const sets = state.draft.outfits.filter((id) =>
       people.some((character) => findOutfitSet(state.catalog, character, id)),
     );
-    const formula = t('캐릭터 {0} × 의상 {1} × 감정 {2} × {3}장 = {4}장', [
+    const formula = t('jobs.characters_outfits_expressions_images', [
       people.length,
       sets.length,
       expressions.length,
       count,
       total.jobs.toLocaleString(locale),
     ]);
-    summary.replaceChildren(el('h2', '', t('생성 수')), el('p', 'jobs-formula', formula));
+    summary.replaceChildren(el('h2', '', t('jobs.image_count')), el('p', 'jobs-formula', formula));
     const full = people.length * sets.length * expressions.length * count;
     if (total.jobs && total.jobs < full)
       summary.append(
         el(
           'p',
           'jobs-note',
-          t('일부 캐릭터에 없는 의상·감정 조합 {0}장은 빠졌습니다.', [
-            (full - total.jobs).toLocaleString(locale),
-          ]),
+          t('jobs.left_out_images_whose_outfit_or', [(full - total.jobs).toLocaleString(locale)]),
         ),
       );
     if (total.groups.length && people.length <= BREAKDOWN_LIMIT) {
@@ -792,9 +775,9 @@ export function createJobs(ctx) {
           el(
             'li',
             '',
-            t('{0}: {1} × 감정 {2} = {3}장', [
+            t('jobs.expressions_images', [
               characterName(character),
-              names.join(', ') || t('의상 없음'),
+              names.join(', ') || t('jobs.no_outfit'),
               groups[0]?.ids.length ?? 0,
               images,
             ]),
@@ -803,15 +786,16 @@ export function createJobs(ctx) {
       }
       summary.append(lines);
     }
-    if (!people.length) summary.append(el('p', 'jobs-note', t('왼쪽에서 캐릭터를 선택하세요.')));
+    if (!people.length)
+      summary.append(el('p', 'jobs-note', t('jobs.select_characters_on_the_left')));
     else if (!total.groups.length)
-      summary.append(el('p', 'jobs-note', t('의상 세트를 체크하세요.')));
+      summary.append(el('p', 'jobs-note', t('jobs.tick_at_least_one_outfit_set')));
     else if (!expressions.length)
-      summary.append(el('p', 'jobs-note', t('감정·동작을 체크하세요.')));
+      summary.append(el('p', 'jobs-note', t('jobs.tick_at_least_one_expression')));
     if (total.jobs > MAX_JOBS)
-      summary.append(el('p', 'jobs-error', t('한 번에 최대 3,000개 작업을 등록할 수 있습니다.')));
+      summary.append(el('p', 'jobs-error', t('jobs.up_to_3_000_jobs_can')));
     actionFormula.textContent = formula;
-    enqueueButton.textContent = t('{0}장 등록', [total.jobs.toLocaleString(locale)]);
+    enqueueButton.textContent = t('jobs.queue', [total.jobs.toLocaleString(locale)]);
     enqueueButton.disabled =
       state.loading || !!ctx.preview || total.jobs < 1 || total.jobs > MAX_JOBS;
   }
@@ -846,11 +830,11 @@ export function createJobs(ctx) {
     renderPieces();
   }
   function renderSettings() {
-    settingsSection.replaceChildren(el('h2', '', t('생성 설정')));
+    settingsSection.replaceChildren(el('h2', '', t('common.generation_settings')));
     const presetRow = el('div', 'jobs-row');
     const chooser = select(
       [
-        ['', t('직접 설정')],
+        ['', t('jobs.custom_settings')],
         ...presets('generation').map((p) => [p.id, `${p.name || p.id} · ${p.id}`]),
       ],
       state.draft.preset,
@@ -866,10 +850,10 @@ export function createJobs(ctx) {
       }
     });
     presetRow.append(
-      label(t('설정 프리셋'), chooser, t('모델·샘플러와 함께 화풍·공통 선택도 저장합니다.')),
-      btn(t('새 프리셋 저장'), () => savePreset(false), 'jobs-muted'),
-      btn(t('프리셋 덮어쓰기'), () => savePreset(true), 'jobs-muted'),
-      btn(t('프리셋 삭제'), deletePreset, 'jobs-danger'),
+      label(t('jobs.settings_preset'), chooser, t('jobs.saves_the_style_and_common_tag')),
+      btn(t('jobs.save_new_preset'), () => savePreset(false), 'jobs-muted'),
+      btn(t('jobs.overwrite_preset'), () => savePreset(true), 'jobs-muted'),
+      btn(t('jobs.delete_preset'), deletePreset, 'jobs-danger'),
     );
     settingsSection.append(presetRow);
     const autoLora = el('input');
@@ -882,12 +866,8 @@ export function createJobs(ctx) {
     const autoLabel = el('label', 'jobs-row');
     autoLabel.append(
       autoLora,
-      el('span', '', t('등록된 LoRA 자동 적용')),
-      el(
-        'small',
-        'jobs-note',
-        t('LoRA 메뉴에서 자동 적용을 켠 LoRA와 트리거 단어를 캐릭터별로 넣습니다.'),
-      ),
+      el('span', '', t('jobs.apply_registered_loras_automatically')),
+      el('small', 'jobs-note', t('jobs.adds_each_character_s_loras_marked')),
     );
     settingsSection.append(autoLabel);
     const form = el('div', 'jobs-settings-form');
@@ -919,7 +899,7 @@ export function createJobs(ctx) {
       persist();
       renderSummary();
     });
-    grid.append(label(t('조합당 장수'), count));
+    grid.append(label(t('jobs.images_per_combination'), count));
     settingsSection.append(grid);
     const seedChoice = el('label', 'jobs-check');
     seedChoice.append(
@@ -927,17 +907,11 @@ export function createJobs(ctx) {
         state.draft.characterSeeds = checked;
         persist();
       }),
-      el('span', '', t('캐릭터별 고정 시드 사용')),
+      el('span', '', t('jobs.one_fixed_seed_per_character')),
     );
     settingsSection.append(
       seedChoice,
-      el(
-        'p',
-        'jobs-note',
-        t(
-          '기본값: 시드 -1(랜덤). 체크하면 등록할 때마다 캐릭터별 새 시드를 뽑아 모든 의상·감정·반복 장수에 함께 사용합니다. 해제하면 이미지마다 랜덤입니다. 시드에 0 이상의 값을 입력하면 체크 여부와 관계없이 모든 대상에 그 값을 사용합니다.',
-        ),
-      ),
+      el('p', 'jobs-note', t('jobs.default_seed_1_random_when_ticked')),
     );
   }
 
@@ -956,17 +930,17 @@ export function createJobs(ctx) {
   /** Ask for the id and name of a new preset; null when cancelled or invalid. */
   function askNewPreset(type, prefix) {
     const id = window
-      .prompt(t('새 프리셋 코드 (영문·숫자·_·-)'), nextPresetId(type, prefix))
+      .prompt(t('jobs.code_for_the_new_preset_letters'), nextPresetId(type, prefix))
       ?.trim();
     if (id == null) return null;
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
-      notify(t('프리셋 코드를 확인하세요.'), true);
+      notify(t('jobs.check_the_preset_code'), true);
       return null;
     }
-    const name = window.prompt(t('프리셋 이름'), id)?.trim();
+    const name = window.prompt(t('common.preset_name'), id)?.trim();
     if (name == null) return null;
     if (!name) {
-      notify(t('프리셋 이름을 입력하세요.'), true);
+      notify(t('jobs.enter_a_preset_name'), true);
       return null;
     }
     return {id, name};
@@ -979,7 +953,7 @@ export function createJobs(ctx) {
       const latest = await ctx.api(presetURL(type, current.id));
       if (!samePreset(latest.entity, current)) {
         await loadCatalog();
-        throw new Error(t('프리셋이 다른 곳에서 변경되었습니다. 최신 목록을 확인하세요.'));
+        throw new Error(t('jobs.the_preset_changed_elsewhere_check_the'));
       }
       expected = latest.revision;
       base = latest.entity;
@@ -999,7 +973,7 @@ export function createJobs(ctx) {
     const latest = await ctx.api(presetURL(type, current.id));
     if (!samePreset(latest.entity, current)) {
       await loadCatalog();
-      throw new Error(t('프리셋이 다른 곳에서 변경되었습니다. 최신 목록을 확인하세요.'));
+      throw new Error(t('jobs.the_preset_changed_elsewhere_check_the'));
     }
     await ctx.api('/api/library/delete', {
       kind: 'preset',
@@ -1009,14 +983,14 @@ export function createJobs(ctx) {
     });
   }
   function previewBlocked() {
-    if (ctx.preview) notify(t('미리보기 모드에서는 프리셋을 변경할 수 없습니다.'), true);
+    if (ctx.preview) notify(t('jobs.presets_cannot_be_changed_in_preview'), true);
     return !!ctx.preview;
   }
   async function savePreset(overwrite) {
     if (previewBlocked() || !state.draft.work) return;
     const current = overwrite ? selectedPreset() : null;
     if (overwrite && !current) {
-      notify(t('덮어쓸 프리셋을 선택하세요.'), true);
+      notify(t('jobs.choose_a_preset_to_overwrite'), true);
       return;
     }
     const fresh = overwrite ? null : askNewPreset('generation', 'G');
@@ -1035,19 +1009,15 @@ export function createJobs(ctx) {
       state.draft.settingsModified = false;
       persist();
       renderSettings();
-      notify(t('설정 프리셋을 저장했습니다.'));
+      notify(t('jobs.saved_the_settings_preset'));
     } catch (error) {
-      notify(t('프리셋 저장 실패: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_save_the_preset', [message(error)]), true);
     }
   }
   async function deletePreset() {
     if (previewBlocked()) return;
     const current = selectedPreset();
-    if (
-      !current ||
-      !window.confirm(t('{0} 프리셋을 삭제하고 휴지통으로 이동할까요?', [current.name]))
-    )
-      return;
+    if (!current || !window.confirm(t('jobs.delete_preset_and_move_it_to', [current.name]))) return;
     try {
       await removePreset('generation', current);
       state.draft.preset = '';
@@ -1055,18 +1025,18 @@ export function createJobs(ctx) {
       persist();
       await loadCatalog();
       await loadVersion();
-      notify(t('프리셋을 휴지통으로 이동했습니다. 현재 설정은 유지됩니다.'));
+      notify(t('jobs.moved_the_preset_to_the_trash'));
     } catch (error) {
-      notify(t('프리셋 삭제 실패: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_delete_the_preset', [message(error)]), true);
     }
   }
   const selectedCombination = () =>
     presets('combination').find((p) => p.id === state.draft.combination);
   function renderCombination() {
-    combinationSection.replaceChildren(el('h2', '', t('조합 프리셋')));
+    combinationSection.replaceChildren(el('h2', '', t('common.combination_presets')));
     const chooser = select(
       [
-        ['', t('선택 안 함')],
+        ['', t('jobs.none')],
         ...presets('combination').map((p) => [p.id, `${p.name || p.id} · ${p.id}`]),
       ],
       state.draft.combination,
@@ -1087,16 +1057,10 @@ export function createJobs(ctx) {
     });
     const row = el('div', 'jobs-row');
     row.append(
-      label(
-        t('불러오기'),
-        chooser,
-        t(
-          '감정 선택, 구도, 의상 부위, 화풍·공통, 생성 설정을 한 번에 불러옵니다. 캐릭터와 의상 세트 선택은 그대로 둡니다.',
-        ),
-      ),
-      btn(t('새 조합 저장'), () => saveCombination(false), 'jobs-muted'),
-      btn(t('덮어쓰기'), () => saveCombination(true), 'jobs-muted'),
-      btn(t('삭제'), deleteCombination, 'jobs-danger'),
+      label(t('jobs.load'), chooser, t('jobs.loads_the_expressions_composition_outfit_slots')),
+      btn(t('jobs.save_new_combination'), () => saveCombination(false), 'jobs-muted'),
+      btn(t('jobs.overwrite'), () => saveCombination(true), 'jobs-muted'),
+      btn(t('common.delete'), deleteCombination, 'jobs-danger'),
     );
     combinationSection.append(row);
   }
@@ -1104,7 +1068,7 @@ export function createJobs(ctx) {
     if (previewBlocked() || !state.draft.work) return;
     const current = overwrite ? selectedCombination() : null;
     if (overwrite && !current) {
-      notify(t('덮어쓸 조합 프리셋을 선택하세요.'), true);
+      notify(t('jobs.choose_a_combination_preset_to_overwrite'), true);
       return;
     }
     const fresh = overwrite ? null : askNewPreset('combination', 'K');
@@ -1125,15 +1089,15 @@ export function createJobs(ctx) {
       }));
       persist();
       renderCombination();
-      notify(t('조합 프리셋을 저장했습니다.'));
+      notify(t('jobs.saved_the_combination_preset'));
     } catch (error) {
-      notify(t('조합 프리셋 저장 실패: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_save_the_combination_preset', [message(error)]), true);
     }
   }
   async function deleteCombination() {
     if (previewBlocked()) return;
     const current = selectedCombination();
-    if (!current || !window.confirm(t('{0} 조합 프리셋을 휴지통으로 이동할까요?', [current.name])))
+    if (!current || !window.confirm(t('jobs.move_combination_preset_to_the_trash', [current.name])))
       return;
     try {
       await removePreset('combination', current);
@@ -1141,9 +1105,9 @@ export function createJobs(ctx) {
       persist();
       await loadCatalog();
       await loadVersion();
-      notify(t('조합 프리셋을 휴지통으로 이동했습니다. 현재 선택은 유지됩니다.'));
+      notify(t('jobs.moved_the_combination_preset_to_the'));
     } catch (error) {
-      notify(t('조합 프리셋 삭제 실패: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_delete_the_combination_preset', [message(error)]), true);
     }
   }
 
@@ -1163,14 +1127,8 @@ export function createJobs(ctx) {
     overrideSection.replaceChildren();
     overrideSection.open = wasOpen;
     overrideSection.append(
-      el('summary', '', t('이번 생성에서만 프롬프트 수정')),
-      el(
-        'p',
-        'jobs-note',
-        t(
-          '켜진 항목만 현재 요청에 적용합니다. 라이브러리 원본은 그대로 유지됩니다. 켜는 순간의 조합 결과를 가져와 고칩니다.',
-        ),
-      ),
+      el('summary', '', t('jobs.edit_the_prompt_for_this_run')),
+      el('p', 'jobs-note', t('jobs.only_switched_on_items_apply_to')),
     );
     for (const [key, title, needs] of OVERRIDES) {
       const available = overrideAvailable(needs);
@@ -1183,7 +1141,7 @@ export function createJobs(ctx) {
             state.draft.overrides[key] = result.parts[key] || '';
           } catch (error) {
             state.draft.overrideEnabled[key] = false;
-            notify(t('프롬프트를 가져오지 못했습니다: {0}', [message(error)]), true);
+            notify(t('jobs.could_not_get_the_prompt', [message(error)]), true);
           }
         }
         persist();
@@ -1204,7 +1162,7 @@ export function createJobs(ctx) {
         });
         const areaBox = withTagComplete(area, ctx.api);
         const reset = btn(
-          t('조합 결과로 되돌리기'),
+          t('jobs.reset_to_the_composed_text'),
           () => {
             delete state.draft.overrides[key];
             state.draft.overrideEnabled[key] = false;
@@ -1237,14 +1195,14 @@ export function createJobs(ctx) {
   async function preview() {
     const body = firstBody();
     if (!body) {
-      notify(t('미리 볼 의상과 감정·동작을 선택하세요.'), true);
+      notify(t('jobs.choose_an_outfit_and_expression_to'), true);
       return;
     }
     const seq = ++state.previewSeq;
     try {
       const result = await ctx.api('/api/compose/preview', body);
       if (seq !== state.previewSeq) return;
-      previewTitle.textContent = t('{0} / {1} · 감정 {2} {3} · 부위: {4}', [
+      previewTitle.textContent = t('jobs.expression_slots', [
         body.character_id,
         body.outfit_id,
         result.expression_id,
@@ -1259,7 +1217,7 @@ export function createJobs(ctx) {
               el(
                 'p',
                 'jobs-note',
-                t('자동 LoRA: {0}', [
+                t('jobs.automatic_loras', [
                   result.auto_loras.map((l) => `${l.name} (${l.strength})`).join(', '),
                 ]),
               ),
@@ -1268,18 +1226,18 @@ export function createJobs(ctx) {
       );
       negative.textContent = lines(result.negative) || '—';
     } catch (error) {
-      notify(t('미리보기 실패: {0}', [message(error)]), true);
+      notify(t('jobs.preview_failed', [message(error)]), true);
     }
   }
   /** Hand the first combination's prompt and settings to the lab (and generate once). */
   async function toLab(runNow) {
     const body = firstBody();
     if (!body) {
-      notify(t('의상과 감정·동작을 선택하세요.'), true);
+      notify(t('jobs.choose_an_outfit_and_an_expression'), true);
       return;
     }
     if (runNow && ctx.preview) {
-      notify(t('미리보기 모드에서는 생성할 수 없습니다.'), true);
+      notify(t('jobs.generation_is_off_in_preview_mode'), true);
       return;
     }
     try {
@@ -1300,13 +1258,13 @@ export function createJobs(ctx) {
         runNow,
       );
     } catch (error) {
-      notify(t('실험실로 보내지 못했습니다: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_send_to_the_lab', [message(error)]), true);
     }
   }
   async function workflow() {
     const body = firstBody();
     if (!body) {
-      notify(t('워크플로를 만들 대상을 선택하세요.'), true);
+      notify(t('jobs.choose_what_to_build_a_workflow'), true);
       return;
     }
     try {
@@ -1320,9 +1278,9 @@ export function createJobs(ctx) {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      notify(t('워크플로를 다운로드했습니다.'));
+      notify(t('jobs.downloaded_the_workflow'));
     } catch (error) {
-      notify(t('워크플로 실패: {0}', [message(error)]), true);
+      notify(t('jobs.workflow_failed', [message(error)]), true);
     }
   }
   async function checkVersion() {
@@ -1330,7 +1288,7 @@ export function createJobs(ctx) {
     if (state.version && now.revision !== state.version) {
       state.version = now.revision;
       await loadCatalog();
-      notify(t('라이브러리가 변경되었습니다. 선택과 프롬프트를 확인한 뒤 다시 등록하세요.'), true);
+      notify(t('jobs.the_library_changed_check_your_selection'), true);
       return false;
     }
     state.version = now.revision;
@@ -1339,11 +1297,11 @@ export function createJobs(ctx) {
   function validate() {
     const total = totals();
     const s = state.draft.settings;
-    if (!total.pairs) return t('유효한 의상과 감정·동작 조합이 없습니다.');
+    if (!total.pairs) return t('jobs.no_valid_outfit_and_expression_combination');
     if (!Number.isInteger(state.draft.count) || state.draft.count < 1 || state.draft.count > 50)
-      return t('조합당 장수는 1~50 사이여야 합니다.');
+      return t('jobs.images_per_combination_must_be_from');
     if (total.jobs > MAX_JOBS || total.usable.length > 500)
-      return t('한 번에 등록할 수 있는 작업 수를 초과했습니다.');
+      return t('jobs.too_many_jobs_for_one_request');
     if (
       !(
         s.family === 'sdxl'
@@ -1351,7 +1309,7 @@ export function createJobs(ctx) {
           : ['model', 'text_encoder', 'vae', 'sampler', 'scheduler', 'clip_type']
       ).every((key) => !!s[key])
     )
-      return t('모델과 생성 설정을 선택하세요.');
+      return t('jobs.choose_the_model_and_settings');
     if (
       !Number.isInteger(s.steps) ||
       s.steps < 1 ||
@@ -1360,19 +1318,19 @@ export function createJobs(ctx) {
       s.cfg < 0 ||
       s.cfg > 30
     )
-      return t('Steps 또는 CFG 값을 확인하세요.');
+      return t('jobs.check_the_steps_or_cfg_value');
     if (
       ![s.width, s.height].every(
         (n) => Number.isInteger(n) && n >= 256 && n <= 3072 && n % 16 === 0,
       )
     )
-      return t('가로와 세로는 256~3072 사이의 16배수여야 합니다.');
+      return t('jobs.width_and_height_must_be_multiples');
     return '';
   }
   async function enqueue() {
     if (state.busy) return;
     if (ctx.preview) {
-      notify(t('미리보기 모드에서는 작업을 등록할 수 없습니다.'), true);
+      notify(t('jobs.jobs_cannot_be_queued_in_preview'), true);
       return;
     }
     const invalid = validate();
@@ -1388,7 +1346,7 @@ export function createJobs(ctx) {
         .map((g) => {
           const slots = slotsForSet(categories(), g.target.outfitSet, state.draft.slots);
           const names = slots.map((slot) => levelLabel(categories(), 'outfit', slot)).join('+');
-          return t('{0} / {1} ({2}): {3}개 감정·동작', [
+          return t('jobs.expressions', [
             g.target.character.name,
             g.target.outfitSet.name,
             names,
@@ -1397,12 +1355,7 @@ export function createJobs(ctx) {
         })
         .join('\n');
       if (
-        !window.confirm(
-          t('{0}개 작업을 대기열에 등록합니다.\n\n{1}\n\n등록 후 이 화면의 선택은 유지됩니다.', [
-            total.jobs,
-            description,
-          ]),
-        )
+        !window.confirm(t('jobs.queue_jobs_your_selection_here_stays', [total.jobs, description]))
       )
         return;
       const requests = withCharacterSeeds(
@@ -1415,7 +1368,7 @@ export function createJobs(ctx) {
         generation_preset_id: state.draft.preset || undefined,
         settings_modified: state.draft.settingsModified,
       });
-      notify(t('{0}개 작업을 등록했습니다. 배치 {1}', [result.count, result.batch_id]));
+      notify(t('jobs.queued_jobs_batch', [result.count, result.batch_id]));
       ctx.onQueueChanged?.();
     } catch (error) {
       if (conflicted(error)) {
@@ -1425,35 +1378,35 @@ export function createJobs(ctx) {
         } catch {
           /* The next attempt reports the problem. */
         }
-        notify(t('라이브러리가 변경되었습니다. 선택을 확인한 뒤 다시 등록하세요.'), true);
-      } else notify(t('등록 실패: {0}', [message(error)]), true);
+        notify(t('jobs.the_library_changed_check_your_selection_3'), true);
+      } else notify(t('jobs.queueing_failed', [message(error)]), true);
     } finally {
       state.busy = false;
     }
   }
-  const previewTitle = el('p', 'jobs-note', t('대상을 선택하고 미리보기를 누르세요.'));
+  const previewTitle = el('p', 'jobs-note', t('jobs.choose_targets_and_press_preview'));
   const positive = el('pre', '', '—');
   const previewWarnings = el('div');
   const negative = el('pre', '', '—');
   const actionFormula = el('span', 'jobs-formula');
-  const enqueueButton = btn(t('0장 등록'), enqueue, 'jobs-primary');
+  const enqueueButton = btn(t('jobs.queue_0_images'), enqueue, 'jobs-primary');
   enqueueButton.disabled = true;
   function renderPreview() {
-    previewSection.replaceChildren(el('h2', '', t('첫 번째 조합 미리보기')));
+    previewSection.replaceChildren(el('h2', '', t('jobs.preview_of_the_first_combination')));
     const row = el('div', 'jobs-row');
     row.append(
-      btn(t('미리보기'), preview, 'jobs-muted'),
-      btn(t('워크플로 다운로드'), workflow, 'jobs-muted'),
-      btn(t('이 설정으로 단일 생성'), () => toLab(true), 'jobs-muted'),
-      btn(t('실험실에서 열기'), () => toLab(false), 'jobs-muted'),
+      btn(t('jobs.preview'), preview, 'jobs-muted'),
+      btn(t('jobs.download_workflow'), workflow, 'jobs-muted'),
+      btn(t('jobs.generate_once_with_these_settings'), () => toLab(true), 'jobs-muted'),
+      btn(t('common.open_in_lab'), () => toLab(false), 'jobs-muted'),
     );
     previewSection.append(
       row,
       previewTitle,
       previewWarnings,
-      el('h3', '', t('긍정 프롬프트')),
+      el('h3', '', t('common.positive_prompt')),
       positive,
-      el('h3', '', t('제외 프롬프트')),
+      el('h3', '', t('common.negative_prompt')),
       negative,
     );
   }
@@ -1493,7 +1446,7 @@ export function createJobs(ctx) {
       state.works = arr(works.works);
       state.comfy = comfy;
       workSelect.replaceChildren(
-        opt('', t('작품 선택')),
+        opt('', t('common.choose_a_work')),
         ...state.works.map((w) => opt(w.id, `${w.name || w.id} · ${w.id}`)),
       );
       const preferred = params.get('work') || session?.getItem(`${STORE}:work`) || '';
@@ -1507,11 +1460,11 @@ export function createJobs(ctx) {
       await loadCatalog();
       await loadVersion();
       if (saved?.libraryRevision && saved.libraryRevision !== state.version)
-        notify(t('라이브러리가 변경되었습니다. 선택과 프롬프트를 확인하세요.'));
+        notify(t('jobs.the_library_changed_check_your_selection_2'));
       if (!comfy.connected)
-        notify(t('ComfyUI 연결 안 됨{0}', [comfy.error ? ` · ${comfy.error}` : '']), true);
+        notify(t('jobs.comfyui_not_connected', [comfy.error ? ` · ${tr(comfy.error)}` : '']), true);
     } catch (error) {
-      notify(t('생성 화면을 불러오지 못했습니다: {0}', [message(error)]), true);
+      notify(t('jobs.could_not_load_the_jobs_screen', [message(error)]), true);
     }
   }
   function leave() {

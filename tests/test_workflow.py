@@ -173,7 +173,7 @@ class WorkflowTests(unittest.TestCase):
         graph = build_workflow(override, 'tag', 'bad', 7)
         self.assertEqual(graph['3']['inputs'], {'vae_name': 'sdxl_vae.safetensors'})
         self.assertEqual(graph['2']['inputs']['stop_at_clip_layer'], -1)
-        with self.assertRaisesRegex(ValueError, '체크포인트'):
+        with self.assertRaisesRegex(ValueError, 'checkpoint'):
             validate_settings({'family': 'sdxl', 'model': 'anima_aestheticV11'}, catalog)
         with self.assertRaises(ValueError):
             validate_settings({'family': 'sd15'}, catalog)

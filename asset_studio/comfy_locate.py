@@ -14,12 +14,14 @@ import string
 import urllib.request
 from pathlib import Path
 
+from .i18n import Msg
+
 KINDS = {
-    'portable': 'ComfyUI 포터블',
+    'portable': Msg('server.comfy_locate.comfyui_portable', 'ComfyUI portable'),
     'stability_matrix': 'Stability Matrix',
-    'desktop': 'ComfyUI 데스크톱 앱',
-    'venv': 'git 설치 (venv)',
-    'unknown': '알 수 없음',
+    'desktop': Msg('server.comfy_locate.comfyui_desktop_app', 'ComfyUI desktop app'),
+    'venv': Msg('server.comfy_locate.git_install_venv', 'git install (venv)'),
+    'unknown': Msg('server.comfy_locate.unknown', 'Unknown'),
 }
 
 

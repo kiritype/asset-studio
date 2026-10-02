@@ -12,6 +12,7 @@ from .. import comfy_locate, samples, settings_api
 from ..compose import compose
 from ..gallery.reviews import ExportIncomplete
 from ..generation.workflow import build_ui_workflow, build_workflow, validate_settings
+from ..i18n import Msg, message_of, wire
 from ..library.layout import Location
 from ..library.service import ConflictError
 from ..lora import datasets as lora_datasets
@@ -267,7 +268,7 @@ def handler_class(studio):
             logging.info(fmt, *args)
 
         def reply(self, status, data):
-            raw = json.dumps(data, ensure_ascii=False).encode()
+            raw = json.dumps(wire(data), ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Content-Length', str(len(raw)))
@@ -299,7 +300,7 @@ def handler_class(studio):
                     kind = _first(params, 'kind', 'censor')
                     mask = studio.tools.mask(_first(params, 'id', ''), kind)
                     if mask is None:
-                        return self.reply(404, {'error': '마스크가 없습니다.'})
+                        return self.reply(404, {'error': Msg('server.handler.no_mask', 'No mask.')})
                     out = io.BytesIO()
                     mask.save(out, 'PNG')
                     return self.send_bytes(
@@ -336,7 +337,7 @@ def handler_class(studio):
                     )
                 self.send_file(path)
             except Exception as error:
-                self.reply(400, {'error': str(error)})
+                self.reply(400, {'error': message_of(error)})
 
         def send_file(self, path):
             is_output = path.startswith('/outputs/')
@@ -347,7 +348,9 @@ def handler_class(studio):
                 relative = 'studio.html' if path in PAGE_ROUTES else unquote(path.lstrip('/'))
             target = (base / relative).resolve()
             if not target.is_relative_to(base.resolve()) or not target.is_file():
-                return self.reply(404, {'error': '파일을 찾을 수 없습니다.'})
+                return self.reply(
+                    404, {'error': Msg('server.handler.file_not_found', 'File not found.')}
+                )
             headers = [('X-Content-Type-Options', 'nosniff')]
             if not is_output:
                 headers.append(('Cache-Control', 'no-store'))
@@ -360,17 +363,41 @@ def handler_class(studio):
                     studio.root, self.headers.get('Origin'), self.server.server_port
                 ):
                     return self.reply(
-                        403, {'error': '다른 웹사이트에서 보낸 요청은 허용하지 않습니다.'}
+                        403,
+                        {
+                            'error': Msg(
+                                'server.handler.requests_from_other_websites_are_not',
+                                'Requests from other websites are not allowed.',
+                            )
+                        },
                     )
                 if urlparse(self.path).path in ('/api/tools/upload', '/api/tools/mask'):
                     if studio.preview:
-                        return self.reply(403, {'error': '미리보기 서버에서는 올릴 수 없습니다.'})
+                        return self.reply(
+                            403,
+                            {
+                                'error': Msg(
+                                    'server.handler.uploads_are_off_on_the_preview',
+                                    'Uploads are off on the preview server.',
+                                )
+                            },
+                        )
                     return self.receive_upload()
                 if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
-                    return self.reply(415, {'error': 'JSON 요청이 필요합니다.'})
+                    return self.reply(
+                        415,
+                        {
+                            'error': Msg(
+                                'server.handler.a_json_request_is_required',
+                                'A JSON request is required.',
+                            )
+                        },
+                    )
                 size = int(self.headers.get('Content-Length', 0))
                 if size < 0 or size > MAX_BODY_BYTES:
-                    raise ValueError('요청 데이터가 너무 큽니다.')
+                    raise ValueError(
+                        Msg('server.handler.the_request_is_too_large', 'The request is too large.')
+                    )
                 body = json.loads(self.rfile.read(size) or b'{}')
                 path = urlparse(self.path).path
                 if studio.preview and (
@@ -379,8 +406,10 @@ def handler_class(studio):
                     return self.reply(
                         403,
                         {
-                            'error': '미리보기 서버에서는 생성 큐와 '
-                            'ComfyUI 실행 상태를 변경하지 않습니다.'
+                            'error': Msg(
+                                'server.handler.the_preview_server_does_not_change',
+                                'The preview server does not change the queue or ComfyUI.',
+                            )
                         },
                     )
                 if path in POST_ROUTES:
@@ -391,20 +420,26 @@ def handler_class(studio):
                     _, _, _, job_id, action = path.split('/')
                     if action in JOB_ACTIONS:
                         return self.reply(200, JOB_ACTIONS[action](studio, job_id))
-                self.reply(404, {'error': '요청을 찾을 수 없습니다.'})
+                self.reply(
+                    404, {'error': Msg('server.handler.request_not_found', 'Request not found.')}
+                )
             except ConflictError as error:
-                self.reply(409, {'error': str(error), 'conflict': True})
+                self.reply(409, {'error': message_of(error), 'conflict': True})
             except ExportIncomplete as error:
-                self.reply(409, {'error': str(error), **error.summary})
+                self.reply(409, {'error': message_of(error), **error.summary})
             except Exception as error:
                 logging.exception('API error')
-                self.reply(400, {'error': str(error)})
+                self.reply(400, {'error': message_of(error)})
 
         def receive_upload(self):
             """One file per request as the raw body; the name comes in ``X-File-Name``."""
             size = int(self.headers.get('Content-Length', 0))
             if size <= 0 or size > MAX_UPLOAD_BYTES:
-                raise ValueError('올릴 파일이 비었거나 너무 큽니다.')
+                raise ValueError(
+                    Msg(
+                        'server.handler.the_file_is_empty_or_too', 'The file is empty or too large.'
+                    )
+                )
             raw = self.rfile.read(size)
             if urlparse(self.path).path == '/api/tools/mask':
                 item_id = self.headers.get('X-Item-Id', '')

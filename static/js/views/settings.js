@@ -22,51 +22,45 @@ export function createSettings(ctx) {
   const heading = element('div', 's-heading');
   heading.append(
     element('div', 's-eyebrow', 'SETTINGS'),
-    element('h1', '', t('설정')),
-    element('p', '', t('화면, ComfyUI 연결, 학습, GPU, 검수 설정을 관리합니다.')),
+    element('h1', '', t('common.settings')),
+    element('p', '', t('settings.interface_comfyui_connection_training_gpu_and')),
   );
   root.append(heading);
 
   const statusCard = element('section', 's-card');
   const statusHead = element('div', 's-card-head');
   const statusTitle = element('div');
-  statusTitle.append(element('h2', '', t('연결 상태')));
-  const checkButton = element('button', 's-button', t('연결 확인'));
+  statusTitle.append(element('h2', '', t('settings.connection')));
+  const checkButton = element('button', 's-button', t('settings.check_connection'));
   checkButton.type = 'button';
   statusHead.append(statusTitle, checkButton);
   const statusLine = element('div', 's-status-line');
   const statusDot = element('span', 's-dot');
-  const statusText = element('strong', '', t('확인 중…'));
+  const statusText = element('strong', '', t('common.checking'));
   const ownership = element('span', 's-tag', '');
   statusLine.append(statusDot, statusText, ownership);
   const statusDetail = element('p', 's-muted');
   const stats = element('div', 's-stats');
   const controlRow = element('div', 's-control-row');
-  const startButton = element('button', 's-button s-primary', t('ComfyUI 시작'));
+  const startButton = element('button', 's-button s-primary', t('settings.start_comfyui'));
   startButton.type = 'button';
-  const stopButton = element('button', 's-button', t('종료'));
+  const stopButton = element('button', 's-button', t('settings.stop'));
   stopButton.type = 'button';
-  const restartButton = element('button', 's-button', t('재시작'));
+  const restartButton = element('button', 's-button', t('settings.restart'));
   restartButton.type = 'button';
   for (const button of [startButton, stopButton, restartButton]) button.disabled = true;
   controlRow.append(startButton, stopButton, restartButton);
-  const controlHint = element(
-    'p',
-    's-muted',
-    t(
-      '이 앱에서 시작한 ComfyUI만 제어할 수 있습니다. 종료와 재시작은 현재 이미지 작업이 끝날 때까지 기다립니다. 작업 대기열의 일시 정지 설정은 바뀌지 않습니다.',
-    ),
-  );
+  const controlHint = element('p', 's-muted', t('settings.only_a_comfyui_started_by_this'));
   statusCard.append(statusHead, statusLine, statusDetail, stats, controlRow, controlHint);
 
   const configCard = element('section', 's-card');
   const configHead = element('div', 's-card-head');
   configHead.append(element('div', '', ''));
   configHead.firstChild.append(
-    element('h2', '', t('ComfyUI 연결 정보')),
-    element('p', 's-muted', t('로컬 서버 주소와 실행 경로를 입력한 뒤 저장하세요.')),
+    element('h2', '', t('settings.comfyui_connection_settings')),
+    element('p', 's-muted', t('settings.enter_the_local_address_and_paths')),
   );
-  const dirtyTag = element('span', 's-tag s-dirty', t('저장하지 않은 변경 사항'));
+  const dirtyTag = element('span', 's-tag s-dirty', t('settings.unsaved_changes'));
   dirtyTag.hidden = true;
   configHead.append(dirtyTag);
   const form = element('form', 's-form');
@@ -83,27 +77,27 @@ export function createSettings(ctx) {
     return input;
   };
   const urlInput = makeField(
-    t('로컬 ComfyUI 주소'),
-    t('http://127.0.0.1:8188 형식의 로컬 주소'),
+    t('settings.local_comfyui_address'),
+    t('settings.a_local_address_like_http_127'),
     'settings-comfy-url',
   );
   urlInput.type = 'url';
   urlInput.required = true;
   const pythonInput = makeField(
-    t('Python 실행 파일'),
-    t('ComfyUI 가상 환경의 python.exe 전체 경로'),
+    t('settings.python_executable'),
+    t('settings.full_path_to_python_exe_in'),
     'settings-python-path',
   );
   pythonInput.required = true;
   const comfyInput = makeField(
-    t('ComfyUI 폴더'),
-    t('main.py가 있는 폴더 전체 경로'),
+    t('settings.comfyui_folder'),
+    t('settings.full_path_to_the_folder_with'),
     'settings-comfy-path',
   );
   comfyInput.required = true;
   const argsInput = makeField(
-    t('실행 인자 · JSON 배열'),
-    t('예: ["--preview-method", "auto"]'),
+    t('settings.launch_arguments_json_array'),
+    t('settings.e_g_preview_method_auto'),
     'settings-comfy-arguments',
     'textarea',
   );
@@ -111,24 +105,24 @@ export function createSettings(ctx) {
   argsInput.spellcheck = false;
   const formActions = element('div', 's-form-actions');
   // Finds installed ComfyUIs; picking one only fills the form, saving stays explicit.
-  const locateButton = element('button', 's-button', t('자동으로 찾기'));
+  const locateButton = element('button', 's-button', t('settings.find_automatically'));
   locateButton.type = 'button';
   const locateBox = element('div', 's-locate');
   const KIND_LABELS = {
-    portable: t('ComfyUI 포터블'),
+    portable: t('settings.comfyui_portable'),
     stability_matrix: 'Stability Matrix',
-    desktop: t('ComfyUI 데스크톱 앱'),
-    venv: t('git 설치 (venv)'),
-    unknown: t('알 수 없음'),
+    desktop: t('settings.comfyui_desktop_app'),
+    venv: t('settings.git_install_venv'),
+    unknown: t('settings.unknown'),
   };
   locateButton.addEventListener('click', async () => {
     locateButton.disabled = true;
-    locateBox.replaceChildren(element('p', 's-muted', t('찾는 중…')));
+    locateBox.replaceChildren(element('p', 's-muted', t('settings.searching')));
     try {
       const {candidates} = await ctx.api('/api/comfy/locate');
       if (!candidates.length) {
         locateBox.replaceChildren(
-          element('p', 's-muted', t('ComfyUI를 찾지 못했습니다. 경로를 직접 입력하세요.')),
+          element('p', 's-muted', t('settings.no_comfyui_was_found_enter_the')),
         );
         return;
       }
@@ -143,14 +137,14 @@ export function createSettings(ctx) {
               's-muted',
               [
                 KIND_LABELS[found.kind] || found.kind,
-                found.source === 'running' ? t('실행 중 · {0}', [found.version || '?']) : '',
-                found.python_path || t('Python을 찾지 못함'),
+                found.source === 'running' ? t('settings.running', [found.version || '?']) : '',
+                found.python_path || t('settings.python_not_found'),
               ]
                 .filter(Boolean)
                 .join(' · '),
             ),
           );
-          const use = element('button', 's-button', t('이 설치 사용'));
+          const use = element('button', 's-button', t('settings.use_this_install'));
           use.type = 'button';
           use.disabled = preview || !found.python_path;
           use.addEventListener('click', () => {
@@ -160,7 +154,7 @@ export function createSettings(ctx) {
               python_path: found.python_path,
               ...(found.arguments ? {arguments: found.arguments} : {}),
             });
-            ctx.notify?.(t('입력란을 채웠습니다. 확인한 뒤 저장하세요.'));
+            ctx.notify?.(t('settings.the_fields_are_filled_in_check'));
           });
           row.append(text, use);
           return row;
@@ -172,64 +166,40 @@ export function createSettings(ctx) {
       locateButton.disabled = false;
     }
   });
-  const discardButton = element('button', 's-button', t('변경 취소'));
+  const discardButton = element('button', 's-button', t('settings.discard_changes'));
   discardButton.type = 'button';
-  const saveButton = element('button', 's-button s-primary', t('설정 저장'));
+  const saveButton = element('button', 's-button s-primary', t('settings.save_settings'));
   saveButton.type = 'submit';
   discardButton.disabled = true;
   saveButton.disabled = true;
   for (const input of [urlInput, pythonInput, comfyInput, argsInput]) input.disabled = true;
   formActions.append(locateButton, discardButton, saveButton);
   form.append(formActions, locateBox);
-  const configHint = element(
-    'p',
-    's-muted',
-    t(
-      '설정을 저장하면 새 주소로 연결을 확인합니다. 관리 중인 ComfyUI나 실행 중인 작업이 있다면 작업을 마친 뒤 저장할 수 있습니다.',
-    ),
-  );
+  const configHint = element('p', 's-muted', t('settings.saving_checks_the_connection_at_the'));
   configCard.append(configHead, form, configHint);
   const reviewCard = element('section', 's-card');
   const reviewHead = element('div', 's-card-head');
   const reviewTitle = element('div');
   reviewTitle.append(
-    element('h2', '', t('VLM 검증')),
-    element(
-      'p',
-      's-muted',
-      t(
-        '생성한 이미지를 로컬 VLM이 프롬프트와 비교해 참고 판정을 남기고, 실패하면 새 시드로 다시 생성합니다. 최종 판정은 언제나 사람이 합니다.',
-      ),
-    ),
+    element('h2', '', t('settings.vlm_review_2')),
+    element('p', 's-muted', t('settings.a_local_vlm_compares_each_image')),
   );
-  const vlmCheck = element('button', 's-button', t('VLM 연결 시험'));
+  const vlmCheck = element('button', 's-button', t('settings.test_vlm_connection'));
   vlmCheck.type = 'button';
   reviewHead.append(reviewTitle, vlmCheck);
-  const vlmStatus = element('p', 's-review-status', t('VLM 설정 확인 중…'));
+  const vlmStatus = element('p', 's-review-status', t('settings.checking_the_vlm_settings'));
   vlmStatus.setAttribute('role', 'status');
-  const vlmHint = element(
-    'p',
-    's-muted',
-    t(
-      'VLM 서버는 위의 "VLM 서버"에서 설정합니다. VLM 판정은 참고 정보이며 최종 채택은 사람의 검수로 결정됩니다.',
-    ),
-  );
+  const vlmHint = element('p', 's-muted', t('settings.set_the_vlm_server_in_the'));
   const vlmPath = element('p', 's-muted');
   const reviewForm = element('form', 's-review-form');
   const enabledLabel = element('label', 's-review-check');
   const enabledInput = element('input');
   enabledInput.type = 'checkbox';
   enabledInput.disabled = true;
-  enabledLabel.append(enabledInput, element('span', '', t('VLM 검증 사용')));
-  const enabledHint = element(
-    'p',
-    's-muted',
-    t(
-      '끄면 생성 후 자동 검증과 자동 재생성을 하지 않고, 갤러리의 VLM 필터·표시·회차 목록도 숨깁니다. 이미 남은 VLM 판정은 이미지 상세에서 볼 수 있고, 새 시드 재생성은 그대로 쓸 수 있습니다. 바꾸면 바로 저장됩니다.',
-    ),
-  );
+  enabledLabel.append(enabledInput, element('span', '', t('settings.use_vlm_review')));
+  const enabledHint = element('p', 's-muted', t('settings.when_off_nothing_is_reviewed_or'));
   const maxLabel = element('label', 's-field');
-  maxLabel.append(element('span', 's-label', t('최대 자동 재생성 횟수')));
+  maxLabel.append(element('span', 's-label', t('settings.max_automatic_regenerations')));
   const maxInput = element('input');
   maxInput.type = 'number';
   maxInput.min = '0';
@@ -239,15 +209,9 @@ export function createSettings(ctx) {
   maxInput.disabled = true;
   maxLabel.append(
     maxInput,
-    element(
-      'small',
-      's-muted',
-      t(
-        '기본값 10회. 최초 생성은 제외하며 새 시드 수동 재생성은 별도 라운드로 시작합니다. 변경한 한도는 새 라운드부터 적용됩니다.',
-      ),
-    ),
+    element('small', 's-muted', t('settings.default_10_the_first_generation_does')),
   );
-  const reviewSave = element('button', 's-button s-primary', t('재생성 횟수 저장'));
+  const reviewSave = element('button', 's-button s-primary', t('settings.save_regeneration_limit'));
   reviewSave.type = 'submit';
   reviewSave.disabled = true;
   const reviewMessage = element('p', 's-muted');
@@ -258,20 +222,14 @@ export function createSettings(ctx) {
   const gpuHead = element('div', 's-card-head');
   const gpuTitle = element('div');
   gpuTitle.append(
-    element('h2', '', t('GPU 사용')),
-    element(
-      'p',
-      's-muted',
-      t(
-        '이미지 생성, VLM 검증, LoRA 학습은 GPU를 하나씩 차례로 씁니다. 다른 작업이 GPU를 쓰는 동안 대기 중인 생성은 시작하지 않습니다.',
-      ),
-    ),
+    element('h2', '', t('settings.gpu_use')),
+    element('p', 's-muted', t('settings.generation_vlm_review_and_lora_training')),
   );
-  const gpuRelease = element('button', 's-button', t('외부 예약 해제'));
+  const gpuRelease = element('button', 's-button', t('settings.release_external_reservation'));
   gpuRelease.type = 'button';
   gpuRelease.hidden = true;
   gpuHead.append(gpuTitle, gpuRelease);
-  const gpuLine = element('p', 's-review-status', t('GPU 상태 확인 중…'));
+  const gpuLine = element('p', 's-review-status', t('settings.checking_the_gpu'));
   gpuLine.setAttribute('role', 'status');
   const gpuDetail = element('p', 's-muted');
   gpuCard.append(gpuHead, gpuLine, gpuDetail);
@@ -297,23 +255,23 @@ export function createSettings(ctx) {
   function renderGpu() {
     if (!gpu) return;
     gpuLine.textContent = gpu.holder
-      ? t('사용 중: {0}{1}', [tr(gpu.label), gpu.state_label ? ` · ${tr(gpu.state_label)}` : ''])
-      : t('사용 중: 이미지 생성{0}', [
-          gpu.running_jobs ? t(' · {0}장 진행 중', [gpu.running_jobs]) : '',
+      ? t('settings.in_use_3', [tr(gpu.label), gpu.state_label ? ` · ${tr(gpu.state_label)}` : ''])
+      : t('settings.in_use_image_generation', [
+          gpu.running_jobs ? t('settings.in_progress', [gpu.running_jobs]) : '',
         ]);
     const since = gpu.since ? new Date(gpu.since).toLocaleString(locale) : '';
     const vram = gpu.vram_total_mb
-      ? t('남은 GPU 메모리: {0} / {1} GB', [
+      ? t('settings.free_gpu_memory_gb', [
           (gpu.vram_free_mb / 1024).toFixed(1),
           (gpu.vram_total_mb / 1024).toFixed(1),
         ])
       : '';
     gpuDetail.textContent = [
-      gpu.waiting ? t('대기 이유: {0}', [gpu.waiting.reason]) : '',
+      gpu.waiting ? t('settings.waiting_because', [tr(gpu.waiting.reason)]) : '',
       vram,
-      since ? t('시작: {0}', [since]) : '',
-      gpu.error ? t('오류: {0}', [gpu.error]) : '',
-      gpu.holder ? t('이 작업이 끝날 때까지 대기 중인 생성은 시작하지 않습니다.') : '',
+      since ? t('settings.started', [since]) : '',
+      gpu.error ? t('settings.error', [tr(gpu.error)]) : '',
+      gpu.holder ? t('settings.queued_images_wait_until_this_finishes') : '',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -326,23 +284,22 @@ export function createSettings(ctx) {
       gpu = await ctx.api('/api/gpu');
       if (active) renderGpu();
     } catch (error) {
-      gpuLine.textContent = t('GPU 상태를 불러올 수 없습니다: {0}', [error.message || error]);
+      gpuLine.textContent = t('settings.cannot_read_the_gpu_status', [error.message || error]);
     }
   }
   gpuRelease.onclick = async () => {
     if (
       !window.confirm(
-        t(
-          '{0}의 GPU 예약을 해제할까요?\n그 작업이 아직 GPU를 쓰고 있다면 생성과 겹칠 수 있습니다.',
-          [gpu?.label || t('외부 작업')],
-        ),
+        t('settings.release_the_gpu_reservation_of_if', [
+          gpu?.label || t('settings.external_work'),
+        ]),
       )
     )
       return;
     try {
       gpu = await ctx.api('/api/gpu/release', {force: true});
       renderGpu();
-      ctx.notify?.(t('GPU 예약을 해제했습니다.'));
+      ctx.notify?.(t('settings.released_the_gpu_reservation'));
     } catch (error) {
       ctx.notify?.(error.message || String(error), true);
     }
@@ -350,22 +307,22 @@ export function createSettings(ctx) {
 
   function renderReview() {
     const configured = Boolean(vlmConfig?.configured);
-    const stateNames = {idle: t('준비됨'), error: t('오류')};
+    const stateNames = {idle: t('settings.ready'), error: t('common.error')};
     const state = !configured
-      ? t('연결 정보가 없어 켤 수 없음')
-      : stateNames[vlmConfig?.status] || vlmConfig?.status || t('설정됨');
-    const usage = reviewConfig?.enabled ? t('사용 중') : t('꺼짐');
+      ? t('settings.cannot_turn_on_without_connection_settings')
+      : stateNames[vlmConfig?.status] || vlmConfig?.status || t('settings.set_up');
+    const usage = reviewConfig?.enabled ? t('settings.in_use') : t('settings.off');
     vlmStatus.textContent =
       vlmTestMessage ||
-      t('VLM 검증: {0} · 연결: {1}{2}', [
+      t('settings.vlm_review_connection', [
         usage,
         state,
-        vlmConfig?.error ? ` · ${vlmConfig.error}` : '',
+        vlmConfig?.error ? ` · ${tr(vlmConfig.error)}` : '',
       ]);
     maxLabel.hidden = !enabledInput.checked;
     reviewSave.hidden = !enabledInput.checked;
     vlmPath.textContent = vlmConfig?.config_path
-      ? t('설정 파일: {0}', [vlmConfig.config_path])
+      ? t('settings.settings_file', [vlmConfig.config_path])
       : '';
     enabledInput.disabled = reviewBusy || preview || !reviewConfig || !configured;
     maxInput.disabled = reviewBusy || preview || !reviewConfig;
@@ -392,14 +349,14 @@ export function createSettings(ctx) {
       );
       enabledInput.checked = Boolean(reviewDraft?.enabled ?? reviewConfig.enabled);
     } else
-      reviewMessage.textContent = t('검수 설정을 불러올 수 없습니다: {0}', [
+      reviewMessage.textContent = t('settings.cannot_load_the_review_settings', [
         settingsResult.reason.message || settingsResult.reason,
       ]);
     if (vlmResult.status === 'fulfilled') vlmConfig = vlmResult.value;
     else
       vlmConfig = {
         configured: false,
-        status: t('상태 확인 실패'),
+        status: t('settings.status_check_failed'),
         error: vlmResult.reason.message || String(vlmResult.reason),
       };
     renderReview();
@@ -408,7 +365,7 @@ export function createSettings(ctx) {
     event?.preventDefault();
     const limit = Number(maxInput.value);
     if (reviewBusy || !Number.isInteger(limit) || limit < 0 || limit > 100) {
-      reviewMessage.textContent = t('자동 재생성 횟수는 0~100 사이의 정수여야 합니다.');
+      reviewMessage.textContent = t('settings.auto_regenerations_must_be_a_whole');
       return;
     }
     reviewBusy = true;
@@ -420,8 +377,8 @@ export function createSettings(ctx) {
       });
       reviewDraft = null;
       reviewMessage.textContent = reviewConfig.enabled
-        ? t('VLM 검증을 켰습니다.')
-        : t('VLM 검증을 껐습니다. 갤러리의 VLM 표시도 숨깁니다.');
+        ? t('settings.vlm_review_is_on')
+        : t('settings.vlm_review_is_off_the_gallery');
     } catch (error) {
       // The switch shows the stored state again when saving fails.
       reviewDraft = null;
@@ -445,18 +402,18 @@ export function createSettings(ctx) {
   vlmCheck.onclick = async () => {
     if (reviewBusy || !vlmConfig?.configured) return;
     reviewBusy = true;
-    vlmTestMessage = t('VLM 연결 시험 중…');
+    vlmTestMessage = t('settings.testing_the_vlm_connection');
     renderReview();
     try {
       const result = await ctx.api('/api/vlm/test', {});
       vlmTestMessage = result.loaded
-        ? t('VLM 모델 로드됨')
+        ? t('settings.vlm_model_loaded')
         : result.configured
-          ? t('VLM 설정 확인됨 · 모델 미로드')
-          : t('VLM 설정되지 않음');
+          ? t('settings.vlm_settings_ok_model_not_loaded')
+          : t('settings.vlm_not_set_up');
       if (result.error) vlmTestMessage += ` · ${tr(result.error)}`;
     } catch (error) {
-      vlmTestMessage = t('VLM 연결 시험 실패 · {0}', [error.message || error]);
+      vlmTestMessage = t('settings.vlm_connection_test_failed', [error.message || error]);
     } finally {
       reviewBusy = false;
       renderReview();
@@ -515,11 +472,14 @@ export function createSettings(ctx) {
     if (payload.system?.comfyui_version) entries.push(['ComfyUI', payload.system.comfyui_version]);
     if (payload.system?.python_version) entries.push(['Python', payload.system.python_version]);
     for (const device of Array.isArray(payload.devices) ? payload.devices : []) {
-      const gpu = device.name || device.type || t('장치');
+      const gpu = device.name || device.type || t('settings.device');
       const memory = readableBytes(device.vram_total);
       entries.push(['GPU', memory ? `${gpu} · ${memory}` : gpu]);
     }
-    entries.push([t('실행 중'), payload.running ?? 0], [t('대기 중'), payload.pending ?? 0]);
+    entries.push(
+      [t('common.running'), payload.running ?? 0],
+      [t('settings.waiting'), payload.pending ?? 0],
+    );
     for (const [label, value] of entries) {
       const item = element('div', 's-stat');
       item.append(element('span', '', label), element('strong', '', value));
@@ -531,30 +491,30 @@ export function createSettings(ctx) {
     statusDot.classList.toggle('connected', Boolean(status.connected));
     statusDot.classList.toggle('working', Boolean(status.operation));
     statusText.textContent = status.operation
-      ? {start: t('시작 중'), stop: t('종료 대기 중'), restart: t('재시작 대기 중')}[
-          status.operation
-        ] || t('처리 중')
+      ? {
+          start: t('settings.starting'),
+          stop: t('settings.waiting_to_stop'),
+          restart: t('settings.waiting_to_restart'),
+        }[status.operation] || t('settings.processing')
       : status.connected
-        ? t('연결됨')
-        : t('연결되지 않음');
+        ? t('settings.connected')
+        : t('settings.not_connected');
     ownership.textContent = status.owned
-      ? t('이 앱에서 실행')
+      ? t('settings.started_by_this_app')
       : status.connected
-        ? t('외부 프로세스')
-        : t('실행 정보 없음');
+        ? t('settings.external_process')
+        : t('settings.no_run_information');
     statusDetail.textContent = status.error
-      ? t('상태: {0}', [tr(status.error)])
-      : t('주소: {0}', [status.url || config?.url || '—']);
+      ? t('settings.status', [tr(status.error)])
+      : t('settings.address_2', [status.url || config?.url || '—']);
     controlRow.hidden = preview || Boolean(status.preview);
     startButton.disabled = busy || !status.can_start;
     stopButton.disabled = busy || !status.can_stop;
     restartButton.disabled = busy || !status.can_restart;
     controlHint.textContent =
       status.connected && !status.owned
-        ? t('Stability Matrix 등 외부에서 실행한 ComfyUI는 해당 앱에서 관리하세요.')
-        : t(
-            '이 앱에서 시작한 ComfyUI만 제어할 수 있습니다. 종료와 재시작은 현재 이미지 작업이 끝날 때까지 기다립니다. 작업 대기열의 일시 정지 설정은 바뀌지 않습니다.',
-          );
+        ? t('settings.manage_a_comfyui_started_elsewhere_for')
+        : t('settings.only_a_comfyui_started_by_this');
     renderStats(status);
     updateDirty();
   }
@@ -605,15 +565,9 @@ export function createSettings(ctx) {
   }
   async function control(action) {
     if (!status?.[`can_${action}`] || busy || preview) return;
-    if (
-      action === 'stop' &&
-      !window.confirm(t('현재 이미지 작업이 끝나면 이 앱에서 실행한 ComfyUI를 종료할까요?'))
-    )
+    if (action === 'stop' && !window.confirm(t('settings.stop_the_comfyui_this_app_started')))
       return;
-    if (
-      action === 'restart' &&
-      !window.confirm(t('현재 이미지 작업이 끝나면 이 앱에서 실행한 ComfyUI를 재시작할까요?'))
-    )
+    if (action === 'restart' && !window.confirm(t('settings.restart_the_comfyui_this_app_started')))
       return;
     busy = true;
     renderStatus();
@@ -621,10 +575,10 @@ export function createSettings(ctx) {
       await ctx.api('/api/connection/control', {action});
       ctx.notify?.(
         action === 'start'
-          ? t('ComfyUI 시작을 요청했습니다.')
+          ? t('settings.asked_comfyui_to_start')
           : action === 'stop'
-            ? t('현재 작업이 끝나면 종료합니다.')
-            : t('현재 작업이 끝나면 재시작합니다.'),
+            ? t('settings.stops_after_the_current_job')
+            : t('settings.restarts_after_the_current_job'),
       );
     } catch (error) {
       ctx.notify?.(error.message || String(error), true);
@@ -645,7 +599,7 @@ export function createSettings(ctx) {
       )
         throw new Error();
     } catch {
-      ctx.notify?.(t('실행 인자는 문자열로 이루어진 JSON 배열이어야 합니다.'), true);
+      ctx.notify?.(t('settings.launch_arguments_must_be_a_json'), true);
       argsInput.focus();
       return;
     }
@@ -667,7 +621,7 @@ export function createSettings(ctx) {
         },
       );
       putFields(config);
-      ctx.notify?.(t('연결 설정을 저장했습니다.'));
+      ctx.notify?.(t('settings.saved_the_connection_settings'));
       await fetchStatus();
     } catch (error) {
       ctx.notify?.(error.message || String(error), true);

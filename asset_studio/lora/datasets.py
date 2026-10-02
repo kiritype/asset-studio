@@ -1,5 +1,6 @@
 """Pick training images from the gallery and turn them into a dataset."""
 
+from ..i18n import Msg
 from ..util import code
 from . import records
 from .captions import caption, default_triggers
@@ -43,7 +44,13 @@ def candidates(studio, work_id, character_id, outfit_set_id):
 def _metadata(studio, path):
     meta = studio.gallery.metadata(path)
     if not isinstance(meta, dict) or meta.get('error'):
-        raise ValueError(f'제작 기록이 없는 이미지는 학습에 쓸 수 없습니다: {path}')
+        raise ValueError(
+            Msg(
+                'server.datasets.images_without_a_record_cannot_be',
+                'Images without a record cannot be used for training: {path}',
+                path=path,
+            )
+        )
     return meta
 
 
@@ -66,14 +73,23 @@ def build(studio, body):
         paths = [item['path'] for item in pool if item['selected']]
     if not isinstance(paths, list) or len(paths) < MIN_IMAGES:
         raise ValueError(
-            '데이터셋에 넣을 이미지를 고르세요. 합격(채택) 이미지가 없으면 직접 고릅니다.'
+            Msg(
+                'server.datasets.choose_images_for_the_dataset_without',
+                'Choose images for the dataset. Without adopted images, pick them yourself.',
+            )
         )
     old_items = {item['path']: item for item in (previous or {}).get('items', [])}
     items = []
     for path in paths:
         found = by_path.get(path)
         if not found:
-            raise ValueError(f'이 의상 세트의 이미지가 아닙니다: {path}')
+            raise ValueError(
+                Msg(
+                    'server.datasets.not_an_image_of_this_outfit',
+                    'Not an image of this outfit set: {path}',
+                    path=path,
+                )
+            )
         meta = _metadata(studio, path)
         kept = old_items.get(path)
         # A caption someone edited by hand survives a rebuild.
@@ -90,7 +106,9 @@ def build(studio, body):
         )
     payload = {
         'id': ident,
-        'name': body.get('name') or (previous or {}).get('name') or f'{outfit_set_id} 데이터셋',
+        'name': body.get('name')
+        or (previous or {}).get('name')
+        or Msg('server.datasets.dataset', '{outfit_set_id} dataset', outfit_set_id=outfit_set_id),
         'outfit_set_id': outfit_set_id,
         'triggers': triggers,
         'items': items,

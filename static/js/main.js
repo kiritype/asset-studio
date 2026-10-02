@@ -113,17 +113,17 @@ async function loadStatus() {
       api('/api/connection/status'),
       api('/api/gpu').catch(() => null),
     ]);
-    let label = t('ComfyUI 연결됨');
-    if (status.operation) label = t('실행 제어 중');
-    else if (!status.connected) label = t('ComfyUI 연결 안 됨');
+    let label = t('app.comfyui_connected');
+    if (status.operation) label = t('app.controlling_comfyui');
+    else if (!status.connected) label = t('app.comfyui_not_connected');
     else if (gpu?.holder)
       label = `GPU: ${tr(gpu.label)}${gpu.state_label ? ` · ${tr(gpu.state_label)}` : ''}`;
-    else if (gpu?.waiting) label = t('GPU 대기 중 · 다른 프로그램');
-    else if (status.running) label = t('ComfyUI 생성 중');
+    else if (gpu?.waiting) label = t('app.waiting_for_the_gpu_another_program');
+    else if (status.running) label = t('app.comfyui_generating');
     byId('runtime-label').textContent = label;
     dot.className = `runtime-dot ${status.connected ? 'online' : 'offline'}`;
   } catch {
-    byId('runtime-label').textContent = t('서버 연결 안 됨');
+    byId('runtime-label').textContent = t('app.server_not_connected');
     dot.className = 'runtime-dot offline';
   } finally {
     statusBusy = false;

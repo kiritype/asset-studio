@@ -7,6 +7,7 @@ import shutil
 import uuid
 from datetime import UTC, datetime
 
+from ..i18n import Msg
 from ..lora import records as lora_records
 from ..util import replace_file
 from . import references
@@ -19,7 +20,10 @@ RENAMABLE = ('work', 'character', 'outfit_set')
 MOVABLE = ('piece', 'outfit_set')
 ADDRESS_FIELDS = ('kind', 'scope', 'work_id', 'character_id', 'category', 'preset_type')
 LIBRARY_FOLDERS = ('works', 'pieces', 'outfit_sets', 'presets', 'loras')
-CHANGED = '다른 곳에서 변경된 항목입니다. 초안을 보존하고 최신 원본과 비교하세요.'
+CHANGED = Msg(
+    'server.service.changed_elsewhere_your_draft_is_kept',
+    'Changed elsewhere. Your draft is kept; compare it with the latest version.',
+)
 
 
 class ConflictError(ValueError):
@@ -86,7 +90,7 @@ class Library:
             )
         if kind == 'lora':
             return lora_records.lora_file(self.store, ident)
-        raise ValueError('지원하지 않는 항목입니다.')
+        raise ValueError(Msg('server.service.unsupported_item', 'Unsupported item.'))
 
     def _entity(self, body, path):
         if body['kind'] == 'piece':
@@ -141,9 +145,9 @@ class Library:
     def save(self, body):
         kind, payload = body.get('kind'), body.get('payload')
         if kind not in KINDS:
-            raise ValueError('지원하지 않는 항목입니다.')
+            raise ValueError(Msg('server.service.unsupported_item', 'Unsupported item.'))
         if not isinstance(payload, dict):
-            raise ValueError('항목 데이터가 필요합니다.')
+            raise ValueError(Msg('server.service.item_data_is_required', 'Item data is required.'))
         ident = valid_id(payload.get('id'))
         with self.lock:
             original = body.get('original_id', ident)
@@ -180,7 +184,13 @@ class Library:
         return self.root / 'retired' / (path.relative_to(self.root).as_posix() + '.json')
 
     def _require_free(
-        self, path, kind, message='이전에 사용된 코드입니다. 다른 코드를 사용하세요.'
+        self,
+        path,
+        kind,
+        message=Msg(
+            'server.service.this_code_was_used_before_use',
+            'This code was used before. Use another code.',
+        ),
     ):
         """A code that was renamed away or sits in the trash must not get a new meaning."""
         if self._retired(path).exists():
@@ -190,17 +200,30 @@ class Library:
             trashed = self.root / item['original_path']
             if target == trashed or target.is_relative_to(trashed):
                 raise ConflictError(
-                    '휴지통에 보관된 코드입니다. 해당 항목을 복원하거나 다른 코드를 사용하세요.'
+                    Msg(
+                        'server.service.this_code_belongs_to_an_item',
+                        'This code belongs to an item in the trash. Restore it or use another '
+                        'code.',
+                    )
                 )
 
     def _rename(self, body, original):
         """Change a code. Images and queue history keep the code they were made with."""
         kind, payload = body['kind'], body['payload']
         if kind not in RENAMABLE:
-            raise ValueError('이 항목의 코드는 변경할 수 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.service.this_item_s_code_cannot_be',
+                    "This item's code cannot be changed.",
+                )
+            )
         source, target = self.path(body, original), self.path(body, payload['id'])
         if not source.is_file():
-            raise ValueError('변경할 항목을 찾을 수 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.service.the_item_to_change_was_not', 'The item to change was not found.'
+                )
+            )
         if (
             'expected_revision' not in body
             or self.revision(source, kind) != body['expected_revision']
@@ -209,8 +232,14 @@ class Library:
         folder = kind in FOLDER_KINDS
         origin, destination = (source.parent, target.parent) if folder else (source, target)
         if destination.exists():
-            raise ConflictError('이미 사용 중인 코드입니다.')
-        self._require_free(target, kind, '이전에 사용된 코드입니다.')
+            raise ConflictError(
+                Msg('server.service.this_code_is_already_in_use', 'This code is already in use.')
+            )
+        self._require_free(
+            target,
+            kind,
+            Msg('server.service.this_code_was_used_before', 'This code was used before.'),
+        )
 
         rewrites = []
         if kind == 'outfit_set':
@@ -259,14 +288,23 @@ class Library:
         """Move a piece or an outfit set to another scope (and, for a piece, folder)."""
         kind, ident, destination = body.get('kind'), body.get('id'), body.get('to')
         if kind not in MOVABLE:
-            raise ValueError('조각과 의상 세트만 옮길 수 있습니다.')
+            raise ValueError(
+                Msg(
+                    'server.service.only_pieces_and_outfit_sets_can',
+                    'Only pieces and outfit sets can be moved.',
+                )
+            )
         if not isinstance(destination, dict):
-            raise ValueError('옮길 위치가 필요합니다.')
+            raise ValueError(Msg('server.service.a_target_is_required', 'A target is required.'))
         with self.lock:
             here, there = Location.of(body), Location.of(destination)
             source = self.path(body, ident)
             if not source.is_file():
-                raise ValueError('옮길 항목을 찾을 수 없습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.service.the_item_to_move_was_not', 'The item to move was not found.'
+                    )
+                )
             if self.revision(source, kind) != body.get('expected_revision'):
                 raise ConflictError(CHANGED)
             self.store.require_owner(there)
@@ -283,9 +321,14 @@ class Library:
                 rewrites = self._plan_set_move(ident, here, there, source)
             target = self.path(new_body, ident)
             if target == source:
-                raise ValueError('이미 그 위치에 있습니다.')
+                raise ValueError(Msg('server.service.already_there', 'Already there.'))
             if target.exists():
-                raise ConflictError('옮길 위치에 같은 코드의 항목이 있습니다.')
+                raise ConflictError(
+                    Msg(
+                        'server.service.an_item_with_the_same_code',
+                        'An item with the same code is already there.',
+                    )
+                )
             self._require_free(target, kind)
             undo = _Undo(self.root / 'backups' / ('move-' + uuid.uuid4().hex))
             try:
@@ -312,16 +355,31 @@ class Library:
         categories = self.store.categories()
         bucket = categories.parse(body.get('category'))['bucket']
         if categories.parse(new_category)['bucket'] != bucket:
-            raise ValueError('다른 역할의 분류로는 옮길 수 없습니다.')
+            raise ValueError(
+                Msg(
+                    'server.service.cannot_move_to_a_category_of',
+                    'Cannot move to a category of another role.',
+                )
+            )
         existing = self.store.find_piece(there, bucket, ident, categories)
         if existing and existing != source:
-            raise ConflictError('옮길 위치에 같은 id의 조각이 있습니다.')
+            raise ConflictError(
+                Msg(
+                    'server.service.a_piece_with_the_same_id',
+                    'A piece with the same id is already there.',
+                )
+            )
         rewrites = []
         for place, set_path, slot in references.slot_references(self.store, here, bucket, ident):
             if not place.can_see(there):
                 raise ValueError(
-                    f'의상 세트 {place.label()}/{set_path.stem}이(가) 이 조각을 쓰고 있어 '
-                    '그 범위로 옮길 수 없습니다.'
+                    Msg(
+                        'server.service.outfit_set_uses_this_piece_so',
+                        'Outfit set {name}/{set_path} uses this piece, so it cannot move to that '
+                        'scope.',
+                        name=place.label(),
+                        set_path=set_path.stem,
+                    )
                 )
             record = self.store.read(set_path)
             record['slots'][slot] = {**record['slots'][slot], 'scope': there.scope}
@@ -330,8 +388,13 @@ class Library:
             for place, path in references.composition_users(self.store, here, ident):
                 if not place.can_see(there) and not self._wider_copy(here, bucket, ident):
                     raise ValueError(
-                        f'감정 {place.label()}/{path.stem}이(가) 이 구도를 쓰고 있어 '
-                        '그 범위로 옮길 수 없습니다.'
+                        Msg(
+                            'server.service.expression_uses_this_composition_so_it',
+                            'Expression {name}/{path} uses this composition, so it cannot move to '
+                            'that scope.',
+                            name=place.label(),
+                            path=path.stem,
+                        )
                     )
         return rewrites
 
@@ -339,12 +402,23 @@ class Library:
         for slot, reference in self.store.read(source).get('slots', {}).items():
             if not there.can_see(here.widen(reference['scope'])):
                 raise ValueError(
-                    f'{slot} 조각이 새 위치에서 보이지 않습니다. 조각을 먼저 옮기세요.'
+                    Msg(
+                        'server.service.piece_would_not_be_visible_from',
+                        'Piece {slot} would not be visible from the new place. Move the piece '
+                        'first.',
+                        slot=slot,
+                    )
                 )
         for path in references.default_outfit_users(self.store, here, ident):
             user = Location('character', path.parent.parent.parent.name, path.parent.name)
             if not user.can_see(there):
-                raise ValueError(f'{user.label()}의 기본 의상입니다. 그 범위로 옮길 수 없습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.service.this_is_the_default_outfit_of',
+                        'This is the default outfit of {name}; it cannot move to that scope.',
+                        name=user.label(),
+                    )
+                )
         return []
 
     def _wider_copy(self, location, bucket, ident):
@@ -376,16 +450,33 @@ class Library:
             slots = references.slot_references(self.store, location, bucket, ident)
             if slots:
                 names = ', '.join(f'{place.label()}/{path.stem}' for place, path, _ in slots[:3])
-                raise ValueError(f'의상 세트에서 쓰는 조각입니다 ({names}). 세트를 먼저 고치세요.')
+                raise ValueError(
+                    Msg(
+                        'server.service.an_outfit_set_uses_this_piece',
+                        'An outfit set uses this piece ({names}). Change the set first.',
+                        names=names,
+                    )
+                )
             if self._wider_copy(location, bucket, ident):
                 return  # The wider copy takes over for every id-based reference.
             if bucket == 'composition' and references.composition_users(
                 self.store, location, ident
             ):
-                raise ValueError('감정·동작에서 쓰는 구도입니다. 참조를 먼저 변경하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.service.an_expression_uses_this_composition_change',
+                        'An expression uses this composition. Change that reference first.',
+                    )
+                )
             presets = references.preset_references(self.store, bucket, ident)
             if presets and not references.copies_elsewhere(self.store, location, bucket, ident):
-                raise ValueError('프리셋에서 쓰는 조각입니다: ' + ', '.join(presets[:3]))
+                raise ValueError(
+                    Msg(
+                        'server.service.a_preset_uses_this_piece',
+                        'A preset uses this piece: {presets}',
+                        presets=', '.join(presets[:3]),
+                    )
+                )
         elif kind == 'outfit_set':
             location = Location.of(body)
             users = references.default_outfit_users(self.store, location, ident)
@@ -394,22 +485,37 @@ class Library:
                 for scope in visible_scopes(location.scope)[1:]
             )
             if users and not wider:
-                raise ValueError('기본 의상입니다. 캐릭터의 기본 의상을 먼저 변경하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.service.this_is_a_default_outfit_change',
+                        "This is a default outfit. Change the character's default outfit first.",
+                    )
+                )
         elif kind == 'preset' and body.get('preset_type') == 'generation':
             if any(
                 preset.get('generation_preset_id') == ident
                 for preset in self.store.list_presets('combination')
             ):
-                raise ValueError('조합 프리셋에서 쓰는 생성 설정입니다.')
+                raise ValueError(
+                    Msg(
+                        'server.service.a_combination_preset_uses_these_generation',
+                        'A combination preset uses these generation settings.',
+                    )
+                )
 
     def delete(self, body):
         kind, ident = body.get('kind'), body.get('id')
         with self.lock:
             path = self.path(body, ident)
             if not path.exists():
-                raise ValueError('이미 삭제된 항목입니다.')
+                raise ValueError(Msg('server.service.already_deleted', 'Already deleted.'))
             if self.revision(path, kind) != body.get('expected_revision'):
-                raise ConflictError('삭제 전에 항목이 변경되었습니다. 최신 내용을 확인하세요.')
+                raise ConflictError(
+                    Msg(
+                        'server.service.the_item_changed_before_deletion_check',
+                        'The item changed before deletion. Check the latest version.',
+                    )
+                )
             entity = self.store.read(path)
             self._require_unreferenced(body, ident)
             source = path.parent if kind in FOLDER_KINDS else path
@@ -436,28 +542,55 @@ class Library:
             manifest = self.store.read(directory / 'manifest.json')
             target = (self.root / manifest['original_path']).resolve()
             if not any(target.is_relative_to(self.root / folder) for folder in LIBRARY_FOLDERS):
-                raise ValueError('허용되지 않는 복원 경로입니다.')
+                raise ValueError(
+                    Msg('server.service.restore_path_not_allowed', 'Restore path not allowed.')
+                )
             if target.exists():
-                raise ConflictError('같은 위치에 항목이 있습니다. 기존 파일을 덮어쓰지 않습니다.')
+                raise ConflictError(
+                    Msg(
+                        'server.service.something_is_already_at_that_place',
+                        'Something is already at that place. Existing files are not overwritten.',
+                    )
+                )
             kind = manifest.get('kind')
             if kind == 'character' and not self.store.work_file(manifest['work_id']).is_file():
-                raise ValueError('상위 작품을 먼저 복원하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.service.restore_the_parent_work_first',
+                        'Restore the parent work first.',
+                    )
+                )
             if (
                 kind == 'dataset'
                 and not self.store.character_file(
                     manifest['work_id'], manifest['character_id']
                 ).is_file()
             ):
-                raise ValueError('상위 캐릭터를 먼저 복원하세요.')
+                raise ValueError(
+                    Msg(
+                        'server.service.restore_the_parent_character_first',
+                        'Restore the parent character first.',
+                    )
+                )
             if kind in MOVABLE:
                 try:
                     self.store.require_owner(Location.of(manifest))
                 except ValueError:
-                    raise ValueError('상위 작품 또는 캐릭터를 먼저 복원하세요.') from None
+                    raise ValueError(
+                        Msg(
+                            'server.service.restore_the_parent_work_or_character',
+                            'Restore the parent work or character first.',
+                        )
+                    ) from None
             if kind == 'piece':
                 bucket = self.store.categories().parse(manifest['category'])['bucket']
                 if self.store.find_piece(Location.of(manifest), bucket, manifest['entity_id']):
-                    raise ConflictError('같은 id의 조각이 이미 있습니다.')
+                    raise ConflictError(
+                        Msg(
+                            'server.service.a_piece_with_this_id_already',
+                            'A piece with this id already exists.',
+                        )
+                    )
             target.parent.mkdir(parents=True, exist_ok=True)
             os.replace(directory / 'content', target)
             manifest['restored_at'] = _now()

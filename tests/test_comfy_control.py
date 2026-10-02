@@ -119,7 +119,7 @@ class ComfyControlTests(unittest.TestCase):
         self.assertFalse(self.studio.gpu.generation_allowed())
         self.assertFalse(self.studio.paused)
         self.assertIsNone(self.control.operation)
-        self.assertIn('경로', self.control.error)
+        self.assertIn('path', self.control.error)
 
     def test_failed_owned_stop_releases_the_gpu_without_changing_pause(self):
         process = FakeProcess(terminate_error=RuntimeError('terminate failed'))

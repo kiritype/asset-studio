@@ -321,7 +321,7 @@ class LoraTests(unittest.TestCase):
         self.studio.lora.start({**self.who, 'dataset_id': 'D001'})
         failed = self.wait_for('R001')
         self.assertEqual(failed['status'], 'failed')
-        self.assertIn('종료 코드 1', failed['error'])
+        self.assertIn('exit code 1', failed['error'])
         self.assertTrue(self.studio.gpu.generation_allowed())
         self.behaviour('30')
         self.studio.lora.start({**self.who, 'dataset_id': 'D001'})

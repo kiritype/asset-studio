@@ -1,7 +1,7 @@
 // Danbooru tag autocomplete for prompt textareas, and a tag check list.
 
 import {MODEL_WORDS, promptTag, replaceTag, splitTags, tagAt} from '../lib/tags.js';
-import {t} from '../core/i18n.js';
+import {t, tr} from '../core/i18n.js';
 import {preferences} from './preferences.js';
 
 const el = (tag, cls = '', text) => {
@@ -13,11 +13,11 @@ const el = (tag, cls = '', text) => {
 const count = (value) =>
   value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : String(value);
 const CATEGORY_LABELS = {
-  general: t('일반'),
-  artist: t('작가'),
-  copyright: t('작품'),
-  character: t('캐릭터'),
-  meta: t('메타'),
+  general: t('common.general'),
+  artist: t('tags.artist'),
+  copyright: t('common.work'),
+  character: t('common.character'),
+  meta: t('tags.meta'),
 };
 
 /**
@@ -124,13 +124,13 @@ const SENTENCE = /\.(\s|$)|(\S+\s+){5,}\S/;
  */
 export async function renderTagCheck(box, api, text, replace) {
   const tags = [...new Set(splitTags(text))];
-  box.replaceChildren(el('p', 'tag-note', t('확인 중…')));
+  box.replaceChildren(el('p', 'tag-note', t('common.checking')));
   const kind = (tag) => (MODEL_WORDS.test(tag) ? 'model' : SENTENCE.test(tag) ? 'sentence' : 'tag');
   const asked = tags.filter((tag) => kind(tag) === 'tag');
   // Anima writes artists as "@name"; Danbooru knows them without the mark.
   const result = await api('/api/tags/check', {tags: asked.map((tag) => tag.replace(/^@/, ''))});
   if (!result.available) {
-    box.replaceChildren(el('p', 'tag-note', result.error || t('태그 데이터가 없습니다.')));
+    box.replaceChildren(el('p', 'tag-note', tr(result.error) || t('tags.no_tag_data')));
     return;
   }
   box.replaceChildren();
@@ -147,7 +147,7 @@ export async function renderTagCheck(box, api, text, replace) {
     const short = tag.length > 40 ? `${tag.slice(0, 38)}…` : tag;
     row.append(
       el('span', 'tag-chip', short),
-      el('small', '', kind(tag) === 'model' ? t('모델 품질어') : t('문장')),
+      el('small', '', kind(tag) === 'model' ? t('tags.model_quality_word') : t('tags.sentence')),
     );
     row.title = tag;
     box.append(row);
@@ -162,12 +162,12 @@ export async function renderTagCheck(box, api, text, replace) {
       problems++;
       row.append(
         el('span', 'tag-chip', tag),
-        el('small', '', t('별칭')),
+        el('small', '', t('tags.alias')),
         fix(tag, entry.alias_of.tag),
       );
     } else {
       problems++;
-      row.append(el('span', 'tag-chip', tag), el('small', '', t('없는 태그')));
+      row.append(el('span', 'tag-chip', tag), el('small', '', t('tags.unknown_tag')));
       for (const near of entry.near || []) row.append(fix(tag, near.tag));
     }
     box.append(row);
@@ -177,8 +177,8 @@ export async function renderTagCheck(box, api, text, replace) {
       'p',
       'tag-note',
       problems
-        ? t('태그 {0}개 중 {1}개 확인 필요', [asked.length, problems])
-        : t('태그 {0}개 모두 Danbooru에 있습니다.', [asked.length]),
+        ? t('tags.of_tags_need_a_look', [asked.length, problems])
+        : t('tags.all_tags_are_in_danbooru', [asked.length]),
     ),
   );
 }

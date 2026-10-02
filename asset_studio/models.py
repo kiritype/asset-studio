@@ -16,10 +16,15 @@ import struct
 import threading
 from pathlib import Path, PureWindowsPath
 
+from .i18n import Msg
 from .util import atomic_json, settings_file
 
 FAMILIES = ('anima', 'sdxl')
-FAMILY_LABELS = {'anima': 'Anima', 'sdxl': 'SDXL·IL', 'unknown': '미분류'}
+FAMILY_LABELS = {
+    'anima': 'Anima',
+    'sdxl': 'SDXL·IL',
+    'unknown': Msg('server.models.uncategorized', 'Uncategorized'),
+}
 # ComfyUI catalog key -> folder under the shared model folder (Stability Matrix layout).
 KIND_FOLDERS = {
     'checkpoints': ('StableDiffusion', 'checkpoints'),
@@ -169,9 +174,18 @@ class ModelProfiles:
     def set_family(self, kind, name, family):
         """Remember a family chosen by hand (``None`` forgets it)."""
         if kind not in KIND_FOLDERS or not isinstance(name, str) or not name:
-            raise ValueError('모델 종류와 이름이 필요합니다.')
+            raise ValueError(
+                Msg(
+                    'server.models.the_model_type_and_name_are',
+                    'The model type and name are required.',
+                )
+            )
         if family not in (*FAMILIES, None):
-            raise ValueError('계열은 anima 또는 sdxl이어야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.models.the_family_must_be_anima_or', 'The family must be anima or sdxl.'
+                )
+            )
         settings = self.settings()
         families = settings.setdefault('families', {})
         if family:

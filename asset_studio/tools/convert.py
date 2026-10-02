@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from PIL import Image, ImageOps
 
+from ..i18n import Msg, message_of
 from ..util import now
 from .metadata import EXIF_MAKE, EXIF_MODEL, read_raw
 
@@ -25,17 +26,33 @@ MAX_SIDE = 8192
 def options_of(body):
     quality = body.get('quality', 95)
     if isinstance(quality, bool) or not isinstance(quality, int) or not 1 <= quality <= 100:
-        raise ValueError('품질은 1~100 사이의 정수여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.convert.quality_must_be_a_whole_number',
+                'Quality must be a whole number from 1 to 100.',
+            )
+        )
     long_side = body.get('long_side') or 0
     if (
         isinstance(long_side, bool)
         or not isinstance(long_side, int)
         or not 0 <= long_side <= MAX_SIDE
     ):
-        raise ValueError(f'긴 변 크기는 0(그대로)~{MAX_SIDE} 사이여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.convert.the_long_side_must_be_from',
+                'The long side must be from 0 (unchanged) to {max_side}.',
+                max_side=MAX_SIDE,
+            )
+        )
     suffix = str(body.get('suffix', ''))
     if len(suffix) > 40 or any(c in suffix for c in '/\\:*?"<>|'):
-        raise ValueError('파일 이름 뒤에 붙일 말에 쓸 수 없는 문자가 있습니다.')
+        raise ValueError(
+            Msg(
+                'server.convert.the_file_name_suffix_has_characters',
+                'The file name suffix has characters that are not allowed.',
+            )
+        )
     return {
         'quality': quality,
         'lossless': bool(body.get('lossless')),
@@ -83,7 +100,11 @@ class ConvertTasks:
         options = options_of(body)
         ids = body.get('ids')
         if not isinstance(ids, list) or not 1 <= len(ids) <= 500:
-            raise ValueError('변환할 이미지를 1~500장 고르세요.')
+            raise ValueError(
+                Msg(
+                    'server.convert.choose_1_to_500_images_to', 'Choose 1 to 500 images to convert.'
+                )
+            )
         items = [self.workspace.get(i) for i in ids]
         task = dict(
             id=uuid.uuid4().hex[:12],
@@ -139,7 +160,7 @@ class ConvertTasks:
             except Exception as error:
                 with self.lock:
                     task['errors'].append(
-                        {'item_id': item['id'], 'name': item['name'], 'error': str(error)}
+                        {'item_id': item['id'], 'name': item['name'], 'error': message_of(error)}
                     )
             with self.lock:
                 task['done'] += 1
@@ -151,7 +172,12 @@ class ConvertTasks:
         with self.lock:
             task = self.tasks.get(task_id)
             if task is None:
-                raise ValueError('변환 작업을 찾을 수 없습니다. 서버가 다시 시작됐을 수 있습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.convert.conversion_task_not_found_the_server',
+                        'Conversion task not found. The server may have restarted.',
+                    )
+                )
             return {**task, 'results': list(task['results']), 'errors': list(task['errors'])}
 
     def zip(self, task_id):

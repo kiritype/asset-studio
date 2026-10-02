@@ -10,6 +10,8 @@ import filecmp
 import shutil
 from pathlib import Path
 
+from ..i18n import Msg
+
 # Shipped with the program (next to the asset_studio package), not with the data.
 SHIPPED = Path(__file__).resolve().parents[2] / 'trainer' / 'anima_lora'
 PATCH = SHIPPED / 'preprocess-model-paths.patch'
@@ -21,12 +23,12 @@ BLOCK_END = '# <<< asset-studio'
 # Training bases: the official Anima base, or the Anima fine-tune used for generation.
 BASES = {
     'official': {
-        'label': '공식 Anima base',
+        'label': Msg('server.trainer_setup.official_anima_base', 'Official Anima base'),
         'preset': 'asset_studio_base',
         'cache_dir': 'post_image_dataset/lora_base',
     },
     'generation': {
-        'label': '생성 모델',
+        'label': Msg('server.trainer_setup.generation_model', 'Generation model'),
         'preset': 'asset_studio',
         'cache_dir': 'post_image_dataset/lora',
     },
@@ -77,8 +79,13 @@ def write_presets(path, bases):
         name = line.strip().strip('[]')
         if line.startswith('[') and name in presets:
             raise ValueError(
-                f'{path}에 [{name}] 프리셋이 이미 있습니다. '
-                'Asset Studio가 관리하는 이름이니 그 부분을 지운 뒤 다시 시작하세요.'
+                Msg(
+                    'server.trainer_setup.already_has_a_preset_asset_studio',
+                    '{path} already has a [{name}] preset. Asset Studio manages that name; remove '
+                    'that section and try again.',
+                    path=path,
+                    name=name,
+                )
             )
     path.write_text(text.rstrip('\n') + '\n\n' + _preset_block(bases), encoding='utf-8')
 
@@ -88,22 +95,41 @@ def prepare(root, settings):
     trainer = Path(settings['trainer_dir'])
     if not (trainer / 'train.py').is_file():
         raise ValueError(
-            f'학습 도구(anima_lora)를 찾지 못했습니다: {trainer}. '
-            'README의 "LoRA 학습 준비"를 따라 설치하세요.'
+            Msg(
+                'server.trainer_setup.trainer_anima_lora_not_found_install',
+                'Trainer (anima_lora) not found: {trainer}. Install it following "LoRA training" '
+                'in the README.',
+                trainer=trainer,
+            )
         )
     preprocess = trainer / 'scripts' / 'tasks' / 'preprocess.py'
     if not preprocess.is_file() or PATCH_MARKER not in preprocess.read_text(encoding='utf-8'):
         raise ValueError(
-            'anima_lora에 Asset Studio 패치가 적용되지 않았습니다. 학습 도구 폴더에서 '
-            f'git apply "{PATCH}" 를 실행하세요.'
+            Msg(
+                'server.trainer_setup.the_asset_studio_patch_is_not',
+                'The Asset Studio patch is not applied to anima_lora. Run git apply "{patch}" in '
+                'the trainer folder.',
+                patch=PATCH,
+            )
         )
     bases = configured_bases(settings)
     if not bases:
-        raise ValueError('설정 › LoRA 학습에서 학습용 모델 파일을 지정하세요.')
+        raise ValueError(
+            Msg(
+                'server.trainer_setup.set_the_training_model_files_in',
+                'Set the training model files in Settings › LoRA training.',
+            )
+        )
     for base in bases.values():
         for key in MODEL_KEYS:
             if not Path(base['paths'][key]).is_file():
-                raise ValueError(f'학습용 모델 파일이 없습니다: {base["paths"][key]}')
+                raise ValueError(
+                    Msg(
+                        'server.trainer_setup.training_model_file_not_found',
+                        'Training model file not found: {paths}',
+                        paths=base['paths'][key],
+                    )
+                )
     methods = trainer / 'configs' / 'methods'
     methods.mkdir(parents=True, exist_ok=True)
     for source in sorted(METHODS_DIR.glob('*.toml')):

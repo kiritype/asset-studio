@@ -24,13 +24,13 @@ class GpuBrokerTests(unittest.TestCase):
 
     def test_one_holder_at_a_time_and_generation_waits(self):
         self.assertTrue(self.gpu.generation_allowed())
-        self.assertEqual(self.gpu.status()['label'], '이미지 생성')
+        self.assertEqual(self.gpu.status()['label'], 'Image generation')
         self.assertTrue(self.gpu.acquire('validation', 'loading_vlm'))
         self.assertFalse(self.gpu.generation_allowed())
         self.assertFalse(self.gpu.acquire('comfy_control', 'stop'))
         self.assertTrue(self.gpu.acquire('validation', 'reviewing'))
         status = self.gpu.status()
-        self.assertEqual((status['holder'], status['state_label']), ('validation', '검증 중'))
+        self.assertEqual((status['holder'], status['state_label']), ('validation', 'Reviewing'))
         self.gpu.release('comfy_control')  # Not the holder: no effect.
         self.assertFalse(self.gpu.generation_allowed())
         self.gpu.block('validation', 'unload not confirmed')
@@ -47,7 +47,7 @@ class GpuBrokerTests(unittest.TestCase):
             self.gpu.reserve({'owner': 'LoRA training'})
         self.studio.jobs[-1]['status'] = 'completed'
         token = self.gpu.reserve({'owner': 'LoRA training'})['token']
-        self.assertEqual(self.gpu.status()['label'], '외부 작업 (LoRA training)')
+        self.assertEqual(self.gpu.status()['label'], 'External work (LoRA training)')
         with self.assertRaises(ValueError):
             self.gpu.reserve({'owner': 'second tool'})
         self.assertFalse(self.studio.validation.process_ready())
@@ -105,7 +105,7 @@ class GpuMonitorTests(unittest.TestCase):
         self.assertIsNone(self.monitor.check('generation'))
         self.vram = (12000, 24564)
         self.monitor._cache = (0.0, None, set())
-        self.assertIn('12,000MB', self.monitor.check('training'))
+        self.assertIn('12,000 MB', self.monitor.check('training'))
         self.assertIsNone(self.monitor.check('generation'))
         self.programs = {'game.exe'}
         self.monitor._cache = (0.0, None, set())

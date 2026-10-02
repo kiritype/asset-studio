@@ -40,7 +40,7 @@ const check = (control, label, hint) => {
   if (hint) n.title = hint;
   return n;
 };
-const found = (ok, yes = t('찾음'), no = t('없음')) =>
+const found = (ok, yes = t('settings.found'), no = t('common.missing')) =>
   el('small', ok ? 's-ok' : 's-missing', ok ? yes : no);
 const lines = (list) => (Array.isArray(list) ? list.join('\n') : '');
 const textarea = (value, rows = 3) => {
@@ -52,8 +52,8 @@ const textarea = (value, rows = 3) => {
 };
 
 export const LANGUAGE_CHOICES = [
-  ['auto', t('브라우저 언어 따르기')],
-  ['ko', t('한국어')],
+  ['auto', t('settings.follow_the_browser_language')],
+  ['ko', t('settings.korean')],
   ['en', 'English'],
   ['ja', '日本語'],
   ['zh-CN', '简体中文'],
@@ -71,7 +71,7 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
     head.append(text);
     const body = el('div', 's-section-form');
     const actions = el('div', 's-control-row');
-    const save = el('button', 's-button s-primary', t('저장'));
+    const save = el('button', 's-button s-primary', t('common.save'));
     save.type = 'button';
     save.disabled = !!ctx.preview;
     const message = el('p', 's-muted');
@@ -83,11 +83,11 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
 
   async function store(section, values, parts, after) {
     parts.save.disabled = true;
-    parts.message.textContent = t('저장 중…');
+    parts.message.textContent = t('settings.saving');
     try {
       const result = await ctx.api('/api/settings/save', {section, values});
       data[section] = {values: result.values, status: result.status};
-      parts.message.textContent = t('저장했습니다.');
+      parts.message.textContent = t('common.saved');
       after?.(result);
       render();
     } catch (error) {
@@ -100,29 +100,26 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
 
   // ---- interface ---------------------------------------------------------------------
 
-  const general = card(
-    t('일반'),
-    t('화면 언어, 테마, 프롬프트 입력 도우미. 이 PC의 모든 브라우저에 적용됩니다.'),
-  );
+  const general = card(t('common.general'), t('settings.language_theme_and_prompt_input_help'));
   function renderGeneral() {
     const v = data.ui.values;
     const language = select(LANGUAGE_CHOICES, v.language);
     const theme = select(
       [
-        ['system', t('시스템 설정 따르기')],
-        ['light', t('라이트')],
-        ['dark', t('다크')],
+        ['system', t('settings.follow_the_system')],
+        ['light', t('settings.light')],
+        ['dark', t('settings.dark')],
       ],
       v.theme,
     );
     const autocomplete = input('checkbox', v.autocomplete);
     general.body.replaceChildren(
-      field(t('언어'), language),
-      field(t('테마'), theme),
+      field(t('settings.language'), language),
+      field(t('settings.theme'), theme),
       check(
         autocomplete,
-        t('Danbooru 태그 자동완성'),
-        t('프롬프트를 입력할 때 태그 후보를 보여 줍니다.'),
+        t('settings.danbooru_tag_autocomplete'),
+        t('settings.suggests_tags_while_you_type_a'),
       ),
     );
     general.save.onclick = () =>
@@ -140,10 +137,7 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
 
   // ---- LoRA training -----------------------------------------------------------------
 
-  const lora = card(
-    t('LoRA 학습'),
-    t('학습 도구(anima_lora) 위치와 학습에 쓸 모델 파일. README의 "LoRA 학습" 준비를 먼저 하세요.'),
-  );
+  const lora = card(t('settings.lora_training'), t('settings.where_the_trainer_anima_lora_is'));
   function renderLora() {
     const {values: v, status: s} = data.lora;
     const trainer = input('text', v.trainer_dir, {placeholder: 'vendor/anima_lora'});
@@ -156,15 +150,14 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
       return n;
     };
     // ComfyUI knows its LoRA folders (extra_model_paths.yaml included); suggest one.
-    const findLoraDir = el('button', 's-button', t('ComfyUI에서 찾기'));
+    const findLoraDir = el('button', 's-button', t('settings.find_in_comfyui'));
     findLoraDir.type = 'button';
     findLoraDir.addEventListener('click', async () => {
       try {
         const {lora_dir: suggested} = await ctx.api('/api/comfy/locate');
-        if (!suggested)
-          return ctx.notify(t('ComfyUI가 켜져 있어야 LoRA 폴더를 찾을 수 있습니다.'), true);
+        if (!suggested) return ctx.notify(t('settings.comfyui_must_be_running_to_find'), true);
         loraDir.value = suggested;
-        ctx.notify(t('LoRA 폴더를 채웠습니다. 확인한 뒤 저장하세요.'));
+        ctx.notify(t('settings.the_lora_folder_is_filled_in'));
       } catch (error) {
         ctx.notify(error.message, true);
       }
@@ -172,8 +165,16 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
     const bases = {};
     const baseBlocks = [];
     for (const [ident, title, hint] of [
-      ['official', t('공식 Anima base'), 'anima-base-v1.0, qwen_3_06b_base, qwen_image_vae'],
-      ['generation', t('생성 모델 (선택)'), t('생성에 쓰는 Anima 파인튜닝 모델로 학습할 때')],
+      [
+        'official',
+        t('settings.official_anima_base'),
+        'anima-base-v1.0, qwen_3_06b_base, qwen_image_vae',
+      ],
+      [
+        'generation',
+        t('settings.generation_model_optional'),
+        t('settings.to_train_on_the_anima_fine'),
+      ],
     ]) {
       const paths = v.bases?.[ident] || {};
       const okay = s.paths_found?.[ident] || {};
@@ -181,11 +182,13 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
       const block = el('fieldset', 's-fieldset');
       block.append(el('legend', '', title), el('small', 's-muted', hint));
       for (const [key, label] of [
-        ['dit', t('확산 모델')],
-        ['text_encoder', t('텍스트 인코더')],
+        ['dit', t('settings.diffusion_model')],
+        ['text_encoder', t('common.text_encoder')],
         ['vae', 'VAE'],
       ]) {
-        const control = input('text', paths[key] || '', {placeholder: t('.safetensors 파일 경로')});
+        const control = input('text', paths[key] || '', {
+          placeholder: t('settings.path_to_a_safetensors_file'),
+        });
         bases[ident][key] = control;
         block.append(field(label, row(control, okay[key])));
       }
@@ -193,15 +196,19 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
     }
     lora.body.replaceChildren(
       field(
-        t('학습 도구 폴더'),
+        t('settings.trainer_folder'),
         row(trainer, s.trainer_found),
-        t('Asset Studio 폴더 기준 상대 경로도 됩니다.'),
+        t('settings.a_path_relative_to_the_asset'),
       ),
-      field(t('학습 도구 Python'), row(python, s.python_found), t('학습 도구 폴더 기준')),
       field(
-        t('LoRA 저장 폴더'),
+        t('settings.trainer_python'),
+        row(python, s.python_found),
+        t('settings.relative_to_the_trainer_folder'),
+      ),
+      field(
+        t('settings.lora_output_folder'),
         row(loraDir, s.lora_dir_found, findLoraDir),
-        t('끝난 에폭이 이 ComfyUI LoRA 폴더로 복사됩니다.'),
+        t('settings.finished_epochs_are_copied_to_this'),
       ),
       ...baseBlocks,
     );
@@ -224,20 +231,24 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
   // ---- tag data ----------------------------------------------------------------------
 
   const tags = card(
-    t('Danbooru 태그 데이터'),
-    t(
-      '태그 자동완성과 태그 확인에 씁니다. 비워 두면 ComfyUI 폴더의 ComfyUI-EasyUseAnima에서 찾습니다.',
-    ),
+    t('settings.danbooru_tag_data'),
+    t('settings.used_for_tag_autocomplete_and_tag'),
   );
   function renderTags() {
     const {values: v, status: s} = data.tags;
-    const folder = input('text', v.danbooru_dir || '', {placeholder: t('비우면 자동으로 찾음')});
+    const folder = input('text', v.danbooru_dir || '', {
+      placeholder: t('settings.leave_empty_to_find_it_automatically'),
+    });
     tags.body.replaceChildren(
-      field(t('태그 파일 폴더'), folder, t('danbooru_2025-09-01.csv가 있는 폴더')),
+      field(
+        t('settings.tag_file_folder'),
+        folder,
+        t('settings.folder_that_contains_danbooru_2025_09'),
+      ),
       el(
         'p',
         s.available ? 's-ok' : 's-missing',
-        s.available ? t('사용 중: {0}', [s.folder]) : t('태그 데이터를 찾지 못했습니다.'),
+        s.available ? t('settings.in_use_2', [s.folder]) : t('settings.tag_data_not_found'),
       ),
     );
     tags.save.onclick = () => store('tags', {danbooru_dir: folder.value}, tags);
@@ -246,10 +257,8 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
   // ---- GPU waiting -------------------------------------------------------------------
 
   const gpuWait = card(
-    t('GPU 대기 조건'),
-    t(
-      '다른 프로그램이 GPU를 쓰고 있으면 작업을 시작하지 않고 기다립니다. nvidia-smi로 남은 VRAM을 확인합니다.',
-    ),
+    t('settings.gpu_wait_rules'),
+    t('settings.while_another_program_uses_the_gpu'),
   );
   function renderGpu() {
     const v = data.gpu.values;
@@ -257,21 +266,25 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
     const limits = {};
     const grid = el('div', 's-grid4');
     for (const [kind, label] of [
-      ['generation', t('이미지 생성')],
-      ['tool', t('이미지 도구')],
-      ['vlm', t('VLM 검수')],
-      ['training', t('LoRA 학습')],
+      ['generation', t('common.image_generation')],
+      ['tool', t('common.image_tools')],
+      ['vlm', t('settings.vlm_review')],
+      ['training', t('settings.lora_training')],
     ]) {
       limits[kind] = input('number', v.min_free_vram_mb?.[kind] ?? 0, {min: 0, step: 256});
       grid.append(field(`${label} (MB)`, limits[kind]));
     }
     const processes = textarea(lines(v.watch_processes), 3);
-    processes.placeholder = t('예: blender.exe');
+    processes.placeholder = t('settings.e_g_blender_exe');
     gpuWait.body.replaceChildren(
-      check(enabled, t('GPU 대기 조건 사용')),
-      el('small', 's-muted', t('작업을 시작하는 데 필요한 최소 남은 VRAM')),
+      check(enabled, t('settings.use_gpu_wait_rules')),
+      el('small', 's-muted', t('settings.minimum_free_vram_needed_to_start')),
       grid,
-      field(t('이 프로그램이 실행 중이면 기다림'), processes, t('한 줄에 실행 파일 이름 하나')),
+      field(
+        t('settings.wait_while_these_programs_run'),
+        processes,
+        t('settings.one_executable_name_per_line'),
+      ),
     );
     gpuWait.save.onclick = () =>
       store(
@@ -289,44 +302,41 @@ export function createSettingsSections(ctx, {onVlmSaved} = {}) {
 
   // ---- VLM server --------------------------------------------------------------------
 
-  const vlm = card(
-    t('VLM 서버'),
-    t(
-      '자동 검수에 쓰는 로컬 비전 모델 서버(OpenAI 호환 API). 모델을 GPU에 올리고 내리는 명령도 적습니다.',
-    ),
-  );
+  const vlm = card(t('settings.vlm_server'), t('settings.the_local_vision_model_server_for'));
   function renderVlm() {
     const {values: v, status: s} = data.vlm;
     const enabled = input('checkbox', v.enabled);
     const url = input('text', v.url, {placeholder: 'http://127.0.0.1:1234'});
-    const model = input('text', v.model, {placeholder: t('모델 식별자')});
+    const model = input('text', v.model, {placeholder: t('settings.model_identifier')});
     const keyEnv = input('text', v.api_key_env, {
-      placeholder: t('선택: API 키가 든 환경변수 이름'),
+      placeholder: t('settings.optional_name_of_the_environment_variable'),
     });
     const load = textarea(lines(v.load_command));
     const unload = textarea(lines(v.unload_command));
     const status = textarea(lines(v.status_command));
     const marker = input('text', v.loaded_marker, {
-      placeholder: t('상태 출력에 이 글자가 있으면 로드됨'),
+      placeholder: t('settings.loaded_when_the_status_output_contains'),
     });
     const commandTimeout = input('number', v.command_timeout_seconds, {min: 5, max: 3600});
     const requestTimeout = input('number', v.request_timeout_seconds, {min: 5, max: 3600});
     vlm.body.replaceChildren(
-      check(enabled, t('VLM 서버 사용')),
+      check(enabled, t('settings.use_the_vlm_server')),
       el(
         'p',
         s.configured ? 's-ok' : 's-missing',
-        s.configured ? t('설정이 올바릅니다.') : tr(s.error) || t('아직 설정되지 않았습니다.'),
+        s.configured
+          ? t('settings.settings_are_valid')
+          : tr(s.error) || t('settings.not_set_up_yet'),
       ),
-      field(t('주소'), url, t('이 PC의 http 주소만 됩니다.')),
-      field(t('모델'), model),
-      field(t('API 키 환경변수'), keyEnv),
-      field(t('모델 올리기 명령'), load, t('한 줄에 실행 파일과 인자를 하나씩')),
-      field(t('모델 내리기 명령'), unload),
-      field(t('상태 확인 명령'), status),
-      field(t('로드 확인 문자열'), marker),
-      field(t('명령 제한 시간(초)'), commandTimeout),
-      field(t('요청 제한 시간(초)'), requestTimeout),
+      field(t('settings.address'), url, t('settings.only_an_http_address_on_this')),
+      field(t('common.model'), model),
+      field(t('settings.api_key_environment_variable'), keyEnv),
+      field(t('settings.load_command'), load, t('settings.the_executable_and_each_argument_on')),
+      field(t('settings.unload_command'), unload),
+      field(t('settings.status_command'), status),
+      field(t('settings.loaded_marker'), marker),
+      field(t('settings.command_timeout_s'), commandTimeout),
+      field(t('settings.request_timeout_s'), requestTimeout),
     );
     vlm.save.onclick = () =>
       store(

@@ -17,6 +17,8 @@ import copy
 import json
 import re
 
+from ..i18n import Msg
+
 LAYOUT_VERSION = 2
 LAYOUT_FILE = 'layout.json'
 SCOPES = ('global', 'work', 'character')
@@ -32,32 +34,38 @@ DEFAULT_CATEGORIES = {
     'schema_version': 2,
     'roles': {
         'outfit': {
-            'label': '의상',
+            'label': Msg('server.layout.outfit', 'Outfit'),
             'level': 'slot',
             'order': ['full', 'hands', 'top', 'bottom', 'shoes'],
             'labels': {
-                'full': '전체',
-                'hands': '손',
-                'top': '상의',
-                'bottom': '하의',
-                'shoes': '신발',
+                'full': Msg('server.layout.all', 'All'),
+                'hands': Msg('server.layout.hands', 'Hands'),
+                'top': Msg('server.layout.top', 'Top'),
+                'bottom': Msg('server.layout.bottom', 'Bottom'),
+                'shoes': Msg('server.layout.shoes', 'Shoes'),
             },
         },
         'expression': {
-            'label': '감정·동작',
+            'label': Msg('server.layout.expression', 'Expression'),
             'level': 'rating',
             'order': ['sfw', 'nsfw'],
-            'labels': {'sfw': '일반', 'nsfw': '성인'},
+            'labels': {
+                'sfw': Msg('server.layout.general', 'General'),
+                'nsfw': Msg('server.layout.adult', 'Adult'),
+            },
             'fixed_levels': True,
             'unique_across_levels': True,
         },
-        'composition': {'label': '구도'},
-        'artist': {'label': '화풍'},
+        'composition': {'label': Msg('server.layout.composition', 'Composition')},
+        'artist': {'label': Msg('server.layout.style', 'Style')},
         'common': {
-            'label': '공통',
+            'label': Msg('server.layout.common', 'Common'),
             'level': 'target',
             'order': ['positive', 'negative'],
-            'labels': {'positive': '긍정', 'negative': '제외'},
+            'labels': {
+                'positive': Msg('server.layout.positive', 'Positive'),
+                'negative': Msg('server.layout.negative', 'Negative'),
+            },
             'fixed_levels': True,
         },
     },
@@ -77,14 +85,25 @@ BUILT_IN_POSITIONS = ('work', 'appearance')
 
 def valid_id(value, label='id'):
     if not isinstance(value, str) or not _ID.fullmatch(value):
-        raise ValueError(f"{label}: 영문·숫자·'_'·'-'만 쓸 수 있습니다 (1~64자).")
+        raise ValueError(
+            Msg(
+                'server.layout.use_only_letters_digits_and_1',
+                "{value}: use only letters, digits, '_' and '-' (1–64 characters).",
+                value=label,
+            )
+        )
     return value
 
 
 def visible_scopes(scope):
     """Scopes a record stored at ``scope`` can refer to, closest first."""
     if scope not in SCOPES:
-        raise ValueError('범위는 global, work, character 중 하나여야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.layout.scope_must_be_global_work_or',
+                'Scope must be global, work or character.',
+            )
+        )
     return SCOPES[SCOPES.index(scope) :: -1]
 
 
@@ -93,7 +112,12 @@ class Location:
 
     def __init__(self, scope, work_id=None, character_id=None):
         if scope not in SCOPES:
-            raise ValueError('범위는 global, work, character 중 하나여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.layout.scope_must_be_global_work_or',
+                    'Scope must be global, work or character.',
+                )
+            )
         self.scope = scope
         self.work_id = valid_id(work_id, 'work_id') if scope != 'global' else None
         self.character_id = valid_id(character_id, 'character_id') if scope == 'character' else None
@@ -118,7 +142,12 @@ class Location:
     def widen(self, scope):
         """The enclosing location at a wider scope (character -> work -> global)."""
         if scope not in visible_scopes(self.scope):
-            raise ValueError('이 위치에서 볼 수 없는 범위입니다.')
+            raise ValueError(
+                Msg(
+                    'server.layout.that_scope_is_not_visible_from',
+                    'That scope is not visible from here.',
+                )
+            )
         return Location(scope, self.work_id, self.character_id)
 
     def can_see(self, other):
@@ -137,9 +166,9 @@ class Location:
     def label(self):
         """Short name for messages shown to the user."""
         if self.scope == 'global':
-            return '전역'
+            return Msg('server.layout.global', 'Global')
         return (
-            f'{self.work_id} 공용'
+            Msg('server.layout.shared_in', 'Shared in {work_id}', work_id=self.work_id)
             if self.scope == 'work'
             else f'{self.work_id}/{self.character_id}'
         )
@@ -154,26 +183,91 @@ class Location:
         return '/'.join(filter(None, (self.scope, self.work_id, self.character_id)))
 
 
+def _default_labels():
+    labels = {}
+    for role in DEFAULT_CATEGORIES['roles'].values():
+        for label in [role['label'], *role.get('labels', {}).values()]:
+            labels[label.key] = label
+    return labels
+
+
+DEFAULT_LABELS = _default_labels()
+# Default labels as data/ stored them before labels were translated on the page.
+LEGACY_LABELS = {
+    '의상': 'server.layout.outfit',
+    '전체': 'server.layout.all',
+    '손': 'server.layout.hands',
+    '상의': 'server.layout.top',
+    '하의': 'server.layout.bottom',
+    '신발': 'server.layout.shoes',
+    '감정·동작': 'server.layout.expression',
+    '일반': 'server.layout.general',
+    '성인': 'server.layout.adult',
+    '구도': 'server.layout.composition',
+    '화풍': 'server.layout.style',
+    '공통': 'server.layout.common',
+    '긍정': 'server.layout.positive',
+    '제외': 'server.layout.negative',
+}
+
+
+def _label(value):
+    """A default label as a translatable ``Msg``; labels people typed stay as they are."""
+    if isinstance(value, dict) and value.get('i18n') in DEFAULT_LABELS:
+        return DEFAULT_LABELS[value['i18n']]
+    if isinstance(value, str) and value in LEGACY_LABELS:
+        return DEFAULT_LABELS[LEGACY_LABELS[value]]
+    return value
+
+
 class Categories:
     """The category definition: roles, the meaning of their first level, compose order."""
 
     def __init__(self, definition=None):
         self.definition = copy.deepcopy(definition or DEFAULT_CATEGORIES)
+        for role in (self.definition.get('roles') or {}).values():
+            if isinstance(role, dict):
+                if 'label' in role:
+                    role['label'] = _label(role['label'])
+                if isinstance(role.get('labels'), dict):
+                    role['labels'] = {k: _label(v) for k, v in role['labels'].items()}
         roles = self.definition.get('roles')
         if not isinstance(roles, dict) or not roles:
-            raise ValueError('분류 정의에 roles가 필요합니다.')
+            raise ValueError(
+                Msg(
+                    'server.layout.the_category_definition_needs_roles',
+                    'The category definition needs roles.',
+                )
+            )
         for name, role in roles.items():
-            valid_id(name, '분류 이름')
+            valid_id(name, Msg('server.layout.category_name', 'Category name'))
             if not isinstance(role, dict):
-                raise ValueError(f'분류 정의가 올바르지 않습니다: {name}')
+                raise ValueError(
+                    Msg(
+                        'server.layout.the_category_definition_is_invalid',
+                        'The category definition is invalid: {name}',
+                        name=name,
+                    )
+                )
         order = self.definition.get('compose_order')
         if not isinstance(order, list) or any(
             item not in roles and item not in BUILT_IN_POSITIONS for item in order
         ):
-            raise ValueError('compose_order에는 분류 이름과 work, appearance만 쓸 수 있습니다.')
+            raise ValueError(
+                Msg(
+                    'server.layout.compose_order_may_only_list_category',
+                    'compose_order may only list category names, work and appearance.',
+                )
+            )
         missing = [name for name in (*roles, *BUILT_IN_POSITIONS) if name not in order]
         if missing:
-            raise ValueError('compose_order에 빠진 항목: ' + ', '.join(missing))
+            raise ValueError(
+                Msg(
+                    'server.layout.missing_from_compose_order',
+                    'Missing from compose_order: {missing}',
+                    missing=', '.join(missing),
+                )
+            )
         self.roles = roles
         self.compose_order = order
 
@@ -191,15 +285,29 @@ class Categories:
         and all of ``expression`` (the image file name is the expression id).
         """
         if not isinstance(category, str):
-            raise ValueError('분류 경로가 필요합니다.')
+            raise ValueError(
+                Msg('server.layout.a_category_path_is_required', 'A category path is required.')
+            )
         segments = category.split('/')
         if not 1 <= len(segments) <= MAX_CATEGORY_DEPTH:
-            raise ValueError(f'분류 경로는 1~{MAX_CATEGORY_DEPTH}단계여야 합니다.')
+            raise ValueError(
+                Msg(
+                    'server.layout.a_category_path_has_1_to',
+                    'A category path has 1 to {max_category_depth} levels.',
+                    max_category_depth=MAX_CATEGORY_DEPTH,
+                )
+            )
         for segment in segments:
-            valid_id(segment, '분류 폴더 이름')
+            valid_id(segment, Msg('server.layout.category_folder_name', 'Category folder name'))
         role = self.roles.get(segments[0])
         if role is None:
-            raise ValueError(f'정의되지 않은 분류입니다: {segments[0]}')
+            raise ValueError(
+                Msg(
+                    'server.layout.undefined_category',
+                    'Undefined category: {segments}',
+                    segments=segments[0],
+                )
+            )
         result = {
             'role': segments[0],
             'level': role.get('level'),
@@ -208,12 +316,22 @@ class Categories:
         }
         if role.get('level'):
             if len(segments) < 2:
-                raise ValueError(f'{role.get("label", segments[0])}은(는) 하위 분류가 필요합니다.')
+                raise ValueError(
+                    Msg(
+                        'server.layout.needs_a_subcategory',
+                        '{segments} needs a subcategory.',
+                        segments=role.get('label', segments[0]),
+                    )
+                )
             value = segments[1]
             if role.get('fixed_levels') and value not in role.get('order', []):
                 raise ValueError(
-                    f'{role.get("label", segments[0])}의 하위 분류는 '
-                    f'{", ".join(role.get("order", []))} 중 하나여야 합니다.'
+                    Msg(
+                        'server.layout.the_subcategory_of_must_be_one',
+                        'The subcategory of {segments} must be one of {order}.',
+                        segments=role.get('label', segments[0]),
+                        order=', '.join(role.get('order', [])),
+                    )
                 )
             result['value'] = value
             if not role.get('unique_across_levels'):

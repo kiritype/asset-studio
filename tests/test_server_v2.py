@@ -215,7 +215,7 @@ class ServerV2Tests(unittest.TestCase):
             },
         )
         self.assertEqual(status, 400)
-        self.assertIn('의상 세트', blocked['error'])
+        self.assertEqual(blocked['error']['i18n'], 'server.service.an_outfit_set_uses_this_piece')
 
         status, preview = self.request('/api/compose/preview', library_request(outfit_id='002'))
         self.assertEqual(

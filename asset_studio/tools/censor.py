@@ -9,6 +9,8 @@ import re
 
 from PIL import Image, ImageFilter, ImageOps
 
+from ..i18n import Msg
+
 TREATMENTS = ('mosaic', 'blur', 'color', 'white', 'white_solid')
 COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
 
@@ -17,7 +19,14 @@ def load_mask(raw, size):
     """A grayscale mask from PNG bytes; must match the image size."""
     with Image.open(io.BytesIO(raw)) as mask:
         if mask.size != tuple(size):
-            raise ValueError(f'마스크 크기 {mask.size}가 이미지 크기 {tuple(size)}와 다릅니다.')
+            raise ValueError(
+                Msg(
+                    'server.censor.the_mask_size_differs_from_the',
+                    'The mask size {size} differs from the image size {size2}.',
+                    size=mask.size,
+                    size2=tuple(size),
+                )
+            )
         if 'A' in mask.getbands():
             # An RGBA export from the editor: the alpha says where to cover.
             return mask.getchannel('A')
@@ -46,9 +55,13 @@ def apply(image, mask, treatment, intensity, color='#ffffff', opacity=100, grow=
     names of a white fill with / without a soft edge.
     """
     if treatment not in TREATMENTS:
-        raise ValueError('가림 방식을 고르세요.')
+        raise ValueError(Msg('server.censor.choose_how_to_cover', 'Choose how to cover.'))
     if not COLOR.match(str(color)):
-        raise ValueError('색은 #rrggbb 형식이어야 합니다.')
+        raise ValueError(
+            Msg(
+                'server.censor.the_color_must_look_like_rrggbb', 'The color must look like #rrggbb.'
+            )
+        )
     if treatment == 'white':
         treatment, color, feather = 'color', '#ffffff', feather or intensity / 2
     elif treatment == 'white_solid':

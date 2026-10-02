@@ -9,29 +9,32 @@ import json
 import secrets
 
 from .gpu_monitor import GpuMonitor
+from .i18n import Msg, message_of
 from .util import atomic_json, now, state_file
 
 HOLDER_LABELS = {
-    'validation': 'VLM 검증',
-    'comfy_control': 'ComfyUI 실행 제어',
-    'external': '외부 작업',
-    'training': 'LoRA 학습',
+    'validation': Msg('server.gpu.vlm_review', 'VLM review'),
+    'comfy_control': Msg('server.gpu.comfyui_control', 'ComfyUI control'),
+    'external': Msg('server.gpu.external_work', 'External work'),
+    'training': Msg('server.gpu.lora_training', 'LoRA training'),
 }
 STATE_LABELS = {
-    'waiting_comfy_idle': 'ComfyUI 작업 끝나기를 기다리는 중',
-    'freeing_comfy': 'ComfyUI 메모리 비우는 중',
-    'loading_vlm': 'VLM 불러오는 중',
-    'reviewing': '검증 중',
-    'unloading_vlm': 'VLM 내리는 중',
-    'blocked': '확인 필요',
-    'start': '시작 중',
-    'stop': '종료 대기 중',
-    'restart': '재시작 대기 중',
-    'comfy_offline': 'ComfyUI 꺼짐',
-    'reserved': '사용 중',
-    'preparing': '학습 준비 중',
-    'preprocessing': '학습 전처리 중',
-    'training': '학습 중',
+    'waiting_comfy_idle': Msg(
+        'server.gpu.waiting_for_comfyui_to_finish_its', 'Waiting for ComfyUI to finish its work'
+    ),
+    'freeing_comfy': Msg('server.gpu.freeing_comfyui_memory', 'Freeing ComfyUI memory'),
+    'loading_vlm': Msg('server.gpu.loading_the_vlm', 'Loading the VLM'),
+    'reviewing': Msg('server.gpu.reviewing', 'Reviewing'),
+    'unloading_vlm': Msg('server.gpu.unloading_the_vlm', 'Unloading the VLM'),
+    'blocked': Msg('server.gpu.check_needed', 'Check needed'),
+    'start': Msg('server.gpu.starting', 'Starting'),
+    'stop': Msg('server.gpu.waiting_to_stop', 'Waiting to stop'),
+    'restart': Msg('server.gpu.waiting_to_restart', 'Waiting to restart'),
+    'comfy_offline': Msg('server.gpu.comfyui_stopped', 'ComfyUI stopped'),
+    'reserved': Msg('server.gpu.in_use', 'In use'),
+    'preparing': Msg('server.gpu.preparing_training', 'Preparing training'),
+    'preprocessing': Msg('server.gpu.preprocessing_for_training', 'Preprocessing for training'),
+    'training': Msg('server.gpu.training', 'Training'),
 }
 ACTIVE_JOB_STATES = ('running', 'cancelling')
 
@@ -95,7 +98,7 @@ class GpuBroker:
         """Keep holding after a failure whose GPU effect is unknown; a person must clear it."""
         with self.lock:
             if self.holder == holder:
-                self.state, self.error = 'blocked', str(error)[:300]
+                self.state, self.error = 'blocked', message_of(error)
 
     def release(self, holder):
         with self.lock:
@@ -134,12 +137,25 @@ class GpuBroker:
         """Hand the GPU to an outside tool once no image is being generated."""
         owner = body.get('owner') if isinstance(body, dict) else None
         if not isinstance(owner, str) or not owner.strip() or len(owner) > 200:
-            raise ValueError('owner: 무엇이 GPU를 쓰는지 적어 주세요.')
+            raise ValueError(
+                Msg('server.gpu.owner_say_what_is_using_the', 'owner: say what is using the GPU.')
+            )
         with self.lock:
             if self.holder is not None:
-                raise ValueError(f'GPU를 {self.label()}이(가) 쓰고 있습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.gpu.the_gpu_is_in_use_by',
+                        'The GPU is in use by {name}.',
+                        name=self.label(),
+                    )
+                )
             if any(job['status'] in ACTIVE_JOB_STATES for job in self._jobs()):
-                raise ValueError('생성 중인 이미지가 끝난 뒤에 예약할 수 있습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.gpu.you_can_reserve_after_the_current',
+                        'You can reserve after the current image finishes.',
+                    )
+                )
             self.acquire('external', 'reserved', owner.strip())
             self.token = secrets.token_hex(16)
             self._persist()
@@ -152,7 +168,12 @@ class GpuBroker:
             if self.holder != 'external':
                 return {'ok': True, **self.status()}
             if not body.get('force') and body.get('token') != self.token:
-                raise ValueError('예약 토큰이 맞지 않습니다.')
+                raise ValueError(
+                    Msg(
+                        'server.gpu.the_reservation_token_does_not_match',
+                        'The reservation token does not match.',
+                    )
+                )
             self.release('external')
             return {'ok': True, **self.status()}
 
@@ -160,7 +181,7 @@ class GpuBroker:
 
     def label(self):
         if self.holder is None:
-            return '이미지 생성'
+            return Msg('server.gpu.image_generation', 'Image generation')
         name = HOLDER_LABELS.get(self.holder, self.holder)
         return f'{name} ({self.owner})' if self.owner else name
 

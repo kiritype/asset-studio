@@ -10,9 +10,9 @@ import {t, tr} from '../core/i18n.js';
 const POLL_MS = 2000;
 const ACCEPT = '.png,.webp,.jpg,.jpeg,.zip';
 const SOURCE_LABELS = {
-  asset_studio: t('Asset Studio 기록'),
+  asset_studio: t('tools.asset_studio_record'),
   parameters: 'A1111/Forge parameters',
-  comfyui: t('ComfyUI 워크플로'),
+  comfyui: t('tools.comfyui_workflow'),
 };
 
 const el = (tag, cls = '', text) => {
@@ -98,12 +98,8 @@ export function createTools(ctx) {
 
   const header = el('header', 'tl-header');
   header.append(
-    el('h1', '', t('이미지 도구')),
-    el(
-      'p',
-      '',
-      t('이미지를 올리거나 갤러리에서 보내 메타데이터와 태그를 확인하고 WebP로 변환합니다.'),
-    ),
+    el('h1', '', t('common.image_tools')),
+    el('p', '', t('tools.upload_images_or_send_them_from')),
   );
   const listPanel = el('aside', 'tl-list');
   const detail = el('div', 'tl-detail');
@@ -122,11 +118,11 @@ export function createTools(ctx) {
 
   async function upload(files) {
     if (!files.length) return;
-    if (ctx.preview) return ctx.notify(t('미리보기 서버에서는 올릴 수 없습니다.'), true);
+    if (ctx.preview) return ctx.notify(t('tools.uploads_are_off_on_the_preview'), true);
     let added = 0;
     const problems = [];
     for (const [index, file] of files.entries()) {
-      uploadStatus.textContent = t('올리는 중 {0}/{1} · {2}', [index + 1, files.length, file.name]);
+      uploadStatus.textContent = t('tools.uploading', [index + 1, files.length, file.name]);
       try {
         const response = await fetch('/api/tools/upload', {
           method: 'POST',
@@ -137,17 +133,18 @@ export function createTools(ctx) {
           body: file,
         });
         const data = await response.json();
-        if (!response.ok || data.ok === false) throw new Error(data.error || t('업로드 실패'));
+        if (!response.ok || data.ok === false)
+          throw new Error(tr(data.error) || t('tools.upload_failed'));
         added += data.added.length;
-        for (const skip of data.skipped || []) problems.push(`${skip.name}: ${skip.error}`);
+        for (const skip of data.skipped || []) problems.push(`${skip.name}: ${tr(skip.error)}`);
       } catch (error) {
         problems.push(`${file.name}: ${error.message}`);
       }
     }
     fileInput.value = '';
-    uploadStatus.textContent = t('{0}장 추가{1}', [
+    uploadStatus.textContent = t('tools.added', [
       added,
-      problems.length ? t(' · {0}개 건너뜀', [problems.length]) : '',
+      problems.length ? t('tools.skipped', [problems.length]) : '',
     ]);
     uploadStatus.title = problems.join('\n');
     if (problems.length) ctx.notify(problems.slice(0, 3).join(' / '), true);
@@ -157,12 +154,7 @@ export function createTools(ctx) {
   async function removeChosen() {
     const ids = chosenIds();
     if (!ids.length) return;
-    if (
-      !window.confirm(
-        t('{0}장을 목록에서 뺄까요? 올린 사본은 지워지고 갤러리 원본은 남습니다.', [ids.length]),
-      )
-    )
-      return;
+    if (!window.confirm(t('tools.remove_images_from_the_list_uploaded', [ids.length]))) return;
     try {
       await ctx.api('/api/tools/remove', {ids});
       state.chosen.clear();
@@ -175,12 +167,12 @@ export function createTools(ctx) {
 
   function renderList() {
     const tools = el('div', 'tl-row');
-    const pick = btn(t('파일·ZIP 올리기'), () => fileInput.click(), 'tl-primary');
+    const pick = btn(t('tools.upload_files_or_zip'), () => fileInput.click(), 'tl-primary');
     pick.disabled = !!ctx.preview;
     const all = btn(
       state.chosen.size === state.items.length && state.items.length
-        ? t('선택 해제')
-        : t('전체 선택'),
+        ? t('common.clear_selection')
+        : t('common.select_all'),
       () => {
         if (state.chosen.size === state.items.length) state.chosen.clear();
         else for (const item of state.items) state.chosen.add(item.id);
@@ -188,29 +180,21 @@ export function createTools(ctx) {
         renderTools();
       },
     );
-    const remove = btn(t('목록에서 빼기'), removeChosen);
+    const remove = btn(t('tools.remove_from_list'), removeChosen);
     remove.disabled = !state.chosen.size || !!ctx.preview;
-    const download = btn(t('ZIP 내려받기 ({0}장)', [state.chosen.size]), () => {
+    const download = btn(t('tools.download_zip', [state.chosen.size]), () => {
       window.location.href = `/api/tools/zip?ids=${chosenIds().join(',')}`;
     });
     download.disabled = !state.chosen.size || state.chosen.size > 500;
     tools.append(pick, all, remove, download, fileInput);
     const grid = el('div', 'tl-grid');
     if (!state.items.length)
-      grid.append(
-        el(
-          'p',
-          'tl-drop-hint',
-          t(
-            '여기에 PNG·WebP·JPEG·ZIP 파일을 끌어다 놓거나, 갤러리에서 이미지를 골라 "이미지 도구로 보내기"를 누르세요.',
-          ),
-        ),
-      );
+      grid.append(el('p', 'tl-drop-hint', t('tools.drop_png_webp_jpeg_or_zip')));
     for (const item of state.items) {
       const card = el('div', 'tl-card');
       if (item.id === state.current) card.classList.add('current');
       const check = input('checkbox', state.chosen.has(item.id));
-      check.setAttribute('aria-label', t('{0} 선택', [item.name]));
+      check.setAttribute('aria-label', t('common.select', [item.name]));
       check.addEventListener('change', () => {
         if (check.checked) state.chosen.add(item.id);
         else state.chosen.delete(item.id);
@@ -229,10 +213,10 @@ export function createTools(ctx) {
         el(
           'small',
           `tl-badge tl-${item.source}`,
-          item.source === 'gallery' ? t('갤러리') : t('업로드'),
+          item.source === 'gallery' ? t('common.gallery') : t('tools.upload'),
         ),
       );
-      if (item.tags) caption.append(el('small', 'tl-badge tl-tagged', t('태그')));
+      if (item.tags) caption.append(el('small', 'tl-badge tl-tagged', t('tools.tags')));
       card.title = `${item.name} · ${item.width}×${item.height} · ${item.format}`;
       card.append(image, caption);
       grid.append(card);
@@ -255,7 +239,7 @@ export function createTools(ctx) {
   /** False when the user keeps unsaved mask edits. */
   function leaveEditor() {
     if (!state.editor?.isDirty()) return true;
-    if (!window.confirm(t('저장하지 않은 마스크 수정이 있습니다. 버릴까요?'))) return false;
+    if (!window.confirm(t('tools.there_are_unsaved_mask_edits_discard'))) return false;
     state.editor = null;
     state.editorKey = '';
     return true;
@@ -281,15 +265,14 @@ export function createTools(ctx) {
   }
 
   const excluded = () => new Set((state.tagger?.exclude || []).map(norm));
-  const visibleTags = (item) =>
-    (item.tags?.tags || []).filter((tag) => !excluded().has(norm(tag)));
+  const visibleTags = (item) => (item.tags?.tags || []).filter((tag) => !excluded().has(norm(tag)));
 
   async function copyTags(item) {
     try {
       await navigator.clipboard.writeText(visibleTags(item).join(', '));
-      ctx.notify(t('태그를 복사했습니다.'));
+      ctx.notify(t('tools.tags_copied'));
     } catch (error) {
-      ctx.notify(t('복사하지 못했습니다: {0}', [error.message]), true);
+      ctx.notify(t('tools.could_not_copy', [error.message]), true);
     }
   }
 
@@ -300,7 +283,7 @@ export function createTools(ctx) {
         values: {exclude: splitTags(text)},
       });
       state.tagger = {...state.tagger, exclude: result.values.exclude || []};
-      ctx.notify(t('제외할 태그를 저장했습니다.'));
+      ctx.notify(t('tools.excluded_tags_saved'));
       renderTools();
       renderDetail();
     } catch (error) {
@@ -328,23 +311,21 @@ export function createTools(ctx) {
       box.append(head, chips);
     };
     if (!prompt) {
-      group(t('태거가 읽은 태그'), tags, 'tl-seen', '');
+      group(t('tools.tags_read_by_the_tagger'), tags, 'tl-seen', '');
       return box;
     }
-    group(t('프롬프트와 일치'), both, 'tl-both', t('프롬프트에도 있고 그림에서도 읽힌 태그'));
+    group(t('tools.matches_the_prompt'), both, 'tl-both', t('tools.tags_in_the_prompt_that_were'));
     group(
-      t('그림에서만 읽힘'),
+      t('tools.only_seen_in_the_image'),
       imageOnly,
       'tl-seen',
-      t('프롬프트에는 없지만 태거가 그림에서 읽은 태그'),
+      t('tools.tags_the_tagger_read_in_the'),
     );
     group(
-      t('그림에서 안 읽힘'),
+      t('tools.not_seen_in_the_image'),
       promptOnly,
       'tl-missing',
-      t(
-        '프롬프트에는 있지만 태거가 읽지 못한 태그. 그려지지 않았거나 태거가 모르는 표현일 수 있습니다.',
-      ),
+      t('tools.tags_in_the_prompt_that_the'),
     );
     return box;
   }
@@ -354,8 +335,8 @@ export function createTools(ctx) {
     const box = el('div', 'tl-compare');
     const modes = el('div', 'tl-row');
     for (const [key, text] of [
-      ['side', t('나란히')],
-      ['slider', t('슬라이더')],
+      ['side', t('common.side_by_side')],
+      ['slider', t('common.slider')],
     ]) {
       const b = btn(text, () => {
         state.compare = key;
@@ -364,13 +345,13 @@ export function createTools(ctx) {
       b.setAttribute('aria-pressed', String(state.compare === key));
       modes.append(b);
     }
-    modes.append(el('small', 'tl-muted', t('원본: {0}', [parent.name])));
+    modes.append(el('small', 'tl-muted', t('tools.original_2', [parent.name])));
     const before = el('img');
     before.src = `/api/tools/image?id=${parent.id}`;
-    before.alt = t('원본');
+    before.alt = t('tools.original');
     const after = el('img');
     after.src = `/api/tools/image?id=${item.id}`;
-    after.alt = t('결과');
+    after.alt = t('tools.result');
     if (state.compare === 'slider') {
       const frame = el('div', 'tl-slider');
       after.className = 'tl-over';
@@ -380,7 +361,7 @@ export function createTools(ctx) {
       range.min = '0';
       range.max = '100';
       range.value = String(state.slider);
-      range.setAttribute('aria-label', t('원본과 결과 경계'));
+      range.setAttribute('aria-label', t('tools.border_between_original_and_result'));
       const place = () => {
         after.style.clipPath = `inset(0 0 0 ${state.slider}%)`;
         line.style.left = `${state.slider}%`;
@@ -435,7 +416,7 @@ export function createTools(ctx) {
         });
         const data = await response.json();
         if (!response.ok || data.ok === false)
-          throw new Error(tr(data.error) || t('저장하지 못했습니다: {0}', [response.status]));
+          throw new Error(tr(data.error) || t('common.could_not_save', [response.status]));
         // The saved mask is what the editor already shows; keep it open.
         Object.assign(item, data.item);
         state.editorKey = `${kind}:${item.id}:${item[spec.field]?.updated_at || ''}`;
@@ -445,9 +426,9 @@ export function createTools(ctx) {
     if (!saved)
       state.editor.setStatus(
         {
-          alpha: t('마스크 없음 · 배경을 분리하거나 남길 부분을 브러시로 칠하세요.'),
-          censor: t('마스크 없음 · 브러시로 칠하거나 부위를 검출하세요.'),
-          inpaint: t('마스크 없음 · 다시 그릴 부분을 브러시로 칠하세요.'),
+          alpha: t('tools.no_mask_split_the_background_or'),
+          censor: t('common.no_mask_paint_with_the_brush'),
+          inpaint: t('tools.no_mask_paint_the_area_to'),
         }[kind],
       );
     return state.editor.element;
@@ -456,41 +437,27 @@ export function createTools(ctx) {
   function renderDetail() {
     const item = current();
     if (!item) {
-      detail.replaceChildren(el('p', 'tl-muted', t('왼쪽에서 이미지를 고르세요.')));
+      detail.replaceChildren(el('p', 'tl-muted', t('tools.choose_an_image_on_the_left')));
       return;
     }
     if (state.tab === 'alpha') {
       detail.replaceChildren(
         maskEditor(item, 'alpha'),
-        el(
-          'p',
-          'tl-muted',
-          t(
-            '파란 부분이 남고 나머지는 투명해집니다. 브러시로 더하고 지우개로 덜어 낸 뒤 저장하세요.',
-          ),
-        ),
+        el('p', 'tl-muted', t('tools.the_blue_area_stays_and_the')),
       );
       return;
     }
     if (state.tab === 'inpaint') {
       detail.replaceChildren(
         maskEditor(item, 'inpaint'),
-        el(
-          'p',
-          'tl-muted',
-          t('초록 부분만 다시 그리고 나머지는 원본 그대로 둡니다. 칠한 뒤 저장하세요.'),
-        ),
+        el('p', 'tl-muted', t('tools.only_the_green_area_is_redrawn')),
       );
       return;
     }
     if (state.tab === 'censor') {
       detail.replaceChildren(
         maskEditor(item, 'censor'),
-        el(
-          'p',
-          'tl-muted',
-          t('빨간 부분이 가려집니다. 브러시로 넓히고 지우개로 덜어 낸 뒤 저장하세요.'),
-        ),
+        el('p', 'tl-muted', t('tools.the_red_area_gets_covered_widen')),
       );
       return;
     }
@@ -509,8 +476,8 @@ export function createTools(ctx) {
     );
     const info = el('div', 'tl-info');
     const a = state.analysis;
-    if (!a) info.append(el('p', 'tl-muted', t('메타데이터 읽는 중…')));
-    else if (a.error) info.append(el('p', 'tl-error', a.error));
+    if (!a) info.append(el('p', 'tl-muted', t('tools.reading_metadata')));
+    else if (a.error) info.append(el('p', 'tl-error', tr(a.error)));
     else {
       const found = a.prompt || {};
       const head = el('div', 'tl-row tl-between');
@@ -519,26 +486,27 @@ export function createTools(ctx) {
           'h3',
           '',
           found.source
-            ? t('프롬프트 · {0}', [SOURCE_LABELS[found.source]])
-            : t('프롬프트 기록 없음'),
+            ? t('tools.prompt', [SOURCE_LABELS[found.source]])
+            : t('tools.no_prompt_record'),
         ),
       );
       if (found.positive)
         head.append(
-          btn(t('실험실에서 열기'), () =>
+          btn(t('common.open_in_lab'), () =>
             sendToLab(ctx, {
               positive: found.positive,
               negative: found.negative || '',
               // Only Studio records carry settings the lab form understands.
               settings: found.source === 'asset_studio' ? found.settings : undefined,
-              source: {label: t('이미지 도구 {0}', [item.name])},
+              source: {label: t('tools.image_tools', [item.name])},
             }),
           ),
         );
       info.append(head);
       if (found.positive) {
-        info.append(el('h4', '', t('긍정')), el('pre', '', found.positive));
-        if (found.negative) info.append(el('h4', '', t('제외')), el('pre', '', found.negative));
+        info.append(el('h4', '', t('tools.positive')), el('pre', '', found.positive));
+        if (found.negative)
+          info.append(el('h4', '', t('tools.negative')), el('pre', '', found.negative));
         const settings = Object.entries(found.settings || {}).filter(
           ([, v]) => typeof v !== 'object',
         );
@@ -546,12 +514,12 @@ export function createTools(ctx) {
           const table = el('dl', 'tl-dl');
           for (const [key, value] of settings)
             table.append(el('dt', '', key), el('dd', '', String(value)));
-          info.append(el('h4', '', t('설정')), table);
+          info.append(el('h4', '', t('common.settings')), table);
         }
       }
       const models = a.comfy?.models || [];
       if (models.length) {
-        info.append(el('h4', '', t('사용한 모델')));
+        info.append(el('h4', '', t('tools.models_used')));
         const list = el('ul', 'tl-models');
         for (const model of models)
           list.append(el('li', '', `${model.node}: ${Object.values(model).slice(1).join(', ')}`));
@@ -559,11 +527,11 @@ export function createTools(ctx) {
       }
       const facts = el('p', 'tl-muted');
       facts.textContent = [
-        a.has_alpha ? t('투명도 있음') : t('투명도 없음'),
-        a.has_workflow ? t('ComfyUI 워크플로 포함') : '',
+        a.has_alpha ? t('tools.has_transparency') : t('tools.no_transparency'),
+        a.has_workflow ? t('tools.contains_a_comfyui_workflow') : '',
         a.text_keys.length
-          ? t('텍스트 항목: {0}', [a.text_keys.join(', ')])
-          : t('텍스트 항목 없음'),
+          ? t('tools.text_entries', [a.text_keys.join(', ')])
+          : t('tools.no_text_entries'),
       ]
         .filter(Boolean)
         .join(' · ');
@@ -571,7 +539,7 @@ export function createTools(ctx) {
       const exif = Object.entries(a.exif || {});
       if (exif.length) {
         const more = el('details');
-        more.append(el('summary', '', t('EXIF {0}개', [exif.length])));
+        more.append(el('summary', '', t('tools.exif', [exif.length])));
         const table = el('dl', 'tl-dl');
         for (const [key, value] of exif) table.append(el('dt', '', key), el('dd', '', value));
         more.append(table);
@@ -579,16 +547,16 @@ export function createTools(ctx) {
       }
       const tags = item.tags?.tags && visibleTags(item);
       const tagHead = el('div', 'tl-row tl-between');
-      tagHead.append(el('h3', '', t('WD14 태그')));
+      tagHead.append(el('h3', '', t('tools.wd14_tags')));
       if (tags) {
         const actions = el('div', 'tl-row');
         actions.append(
-          btn(t('태그 복사'), () => copyTags(item)),
-          btn(t('태그로 실험실 열기'), () =>
+          btn(t('tools.copy_tags'), () => copyTags(item)),
+          btn(t('tools.open_tags_in_lab'), () =>
             sendToLab(ctx, {
               positive: tags.join(', '),
               negative: '',
-              source: {label: t('이미지 도구 {0}', [item.name])},
+              source: {label: t('tools.image_tools', [item.name])},
             }),
           ),
         );
@@ -597,12 +565,12 @@ export function createTools(ctx) {
       info.append(tagHead);
       if (tags) {
         const hidden = item.tags.tags.length - tags.length;
-        if (hidden) info.append(el('p', 'tl-muted', t('제외할 태그 {0}개를 숨겼습니다.', [hidden])));
+        if (hidden) info.append(el('p', 'tl-muted', t('tools.excluded_tags_are_hidden', [hidden])));
         info.append(
           el(
             'p',
             'tl-muted',
-            t('{0} · 일반 {1} / 캐릭터 {2}', [
+            t('tools.general_character', [
               item.tags.model,
               item.tags.threshold,
               item.tags.character_threshold,
@@ -616,8 +584,8 @@ export function createTools(ctx) {
             'p',
             'tl-muted',
             state.waitingTags.has(item.id)
-              ? t('태그 분석 대기 중…')
-              : t('아직 분석하지 않았습니다. 오른쪽 "태그 분석"에서 실행하세요.'),
+              ? t('tools.waiting_for_tagging')
+              : t('tools.not_analyzed_yet_run_it_from'),
           ),
         );
     }
@@ -642,7 +610,7 @@ export function createTools(ctx) {
     try {
       await ctx.api('/api/jobs/tags', {...state.tag, ids});
       for (const id of ids) state.waitingTags.add(id);
-      ctx.notify(t('{0}장을 태그 분석 대기열에 넣었습니다.', [ids.length]));
+      ctx.notify(t('tools.queued_images_for_tagging', [ids.length]));
       ctx.onQueueChanged?.();
       renderDetail();
       poll();
@@ -677,7 +645,7 @@ export function createTools(ctx) {
       'input',
       () => (c.long_side = Math.max(0, Number(longSide.value) || 0)),
     );
-    const suffix = input('text', c.suffix, {placeholder: t('예: _web')});
+    const suffix = input('text', c.suffix, {placeholder: t('tools.e_g_web')});
     suffix.addEventListener('input', () => (c.suffix = suffix.value));
     const check = (control, text, hint) => {
       const n = el('label', 'tl-check');
@@ -686,19 +654,15 @@ export function createTools(ctx) {
       return n;
     };
     const count = chosenIds().length;
-    const run = btn(t('선택한 {0}장 WebP로 변환', [count]), startConvert, 'tl-primary');
+    const run = btn(t('tools.convert_selected_to_webp', [count]), startConvert, 'tl-primary');
     run.disabled = !count || !!ctx.preview || state.task?.status === 'running';
     box.append(
-      field(t('품질'), qualityRow, t('기본 95. 무손실을 켜면 품질 값은 쓰지 않습니다.')),
-      check(lossless, t('무손실')),
-      check(
-        keep,
-        t('메타데이터 유지'),
-        t('ComfyUI 프롬프트와 워크플로를 WebP EXIF에 남깁니다. 배포용이면 끄세요.'),
-      ),
-      el('small', 'tl-muted', t('끄면(기본) 프롬프트·워크플로·EXIF를 모두 지웁니다.')),
-      field(t('긴 변 크기(px)'), longSide, t('0이면 원래 크기')),
-      field(t('파일 이름 뒤에 붙일 말'), suffix, t('결과는 outputs/_tools/<날짜>/에 저장됩니다.')),
+      field(t('common.quality'), qualityRow, t('tools.default_95_ignored_when_lossless_is')),
+      check(lossless, t('tools.lossless')),
+      check(keep, t('tools.keep_metadata'), t('tools.keeps_the_comfyui_prompt_and_workflow')),
+      el('small', 'tl-muted', t('tools.off_default_removes_the_prompt_workflow')),
+      field(t('tools.long_side_px'), longSide, t('tools.0_keeps_the_original_size')),
+      field(t('tools.file_name_suffix'), suffix, t('tools.results_are_saved_in_outputs_tools')),
       run,
     );
     const task = state.task;
@@ -708,7 +672,7 @@ export function createTools(ctx) {
         el(
           'p',
           '',
-          `${task.status === 'running' ? t('변환 중') : t('완료')} ${task.done}/${task.total}`,
+          `${task.status === 'running' ? t('tools.converting') : t('common.done')} ${task.done}/${task.total}`,
         ),
       );
       let before = 0;
@@ -726,9 +690,9 @@ export function createTools(ctx) {
           ),
         );
       for (const error of task.errors)
-        result.append(el('p', 'tl-error', `${error.name}: ${error.error}`));
+        result.append(el('p', 'tl-error', `${error.name}: ${tr(error.error)}`));
       if (task.status !== 'running' && task.results.length) {
-        const zip = el('a', 'tl-link', t('ZIP 내려받기 ({0}장)', [task.results.length]));
+        const zip = el('a', 'tl-link', t('tools.download_zip', [task.results.length]));
         zip.href = `/api/tools/convert/zip?id=${task.id}`;
         result.append(zip);
       }
@@ -741,7 +705,7 @@ export function createTools(ctx) {
     const box = el('div');
     const info = state.tagger;
     if (!info) {
-      box.append(el('p', 'tl-muted', t('태거 정보를 읽는 중…')));
+      box.append(el('p', 'tl-muted', t('tools.reading_tagger_information')));
       return box;
     }
     if (!info.available) {
@@ -766,60 +730,41 @@ export function createTools(ctx) {
       () => (tagging.character_threshold = Number(character.value)),
     );
     const count = chosenIds().length;
-    const run = btn(t('선택한 {0}장 태그 분석', [count]), startTags, 'tl-primary');
+    const run = btn(t('tools.tag_selected', [count]), startTags, 'tl-primary');
     run.disabled = !count || !!ctx.preview;
     box.append(
-      field(
-        t('모델'),
-        model,
-        t('처음 쓰는 모델은 ComfyUI가 Hugging Face에서 내려받습니다 (수백 MB~1GB).'),
-      ),
-      field(t('일반 태그 임계값'), threshold),
-      field(t('캐릭터 태그 임계값'), character),
+      field(t('common.model'), model, t('tools.comfyui_downloads_a_model_from_hugging')),
+      field(t('tools.general_tag_threshold'), threshold),
+      field(t('tools.character_tag_threshold'), character),
       run,
-      el(
-        'p',
-        'tl-muted',
-        t(
-          '생성 대기열을 함께 쓰므로 생성 중인 이미지가 끝난 뒤 실행됩니다. 결과는 가운데 패널에서 프롬프트와 비교합니다.',
-        ),
-      ),
+      el('p', 'tl-muted', t('tools.shares_the_generation_queue_so_it')),
     );
 
-    box.append(el('h4', '', t('제외할 태그')));
+    box.append(el('h4', '', t('tools.excluded_tags')));
     const exclude = el('textarea');
     exclude.rows = 3;
     exclude.value = (info.exclude || []).join(', ');
     exclude.placeholder = 'simple background, white background';
-    const saveExclude = btn(t('제외 목록 저장'), () => saveExcludes(exclude.value));
+    const saveExclude = btn(t('tools.save_exclusions'), () => saveExcludes(exclude.value));
     saveExclude.disabled = !!ctx.preview;
     box.append(
       exclude,
       saveExclude,
-      el('small', 'tl-muted', t('쉼표로 구분합니다. 화면, 복사, 내보내기에서 모두 빠집니다.')),
+      el('small', 'tl-muted', t('tools.separate_with_commas_they_are_left')),
     );
 
-    box.append(el('h4', '', t('태그 내보내기')));
+    box.append(el('h4', '', t('tools.export_tags')));
     const tagged = state.items.filter((i) => state.chosen.has(i.id) && i.tags);
     const exportAs = (format) => {
       const ids = tagged.map((i) => i.id).join(',');
       window.location.href = `/api/tools/tags/export?format=${format}&ids=${ids}`;
     };
-    const asText = btn(t('TXT ({0}장)', [tagged.length]), () => exportAs('txt'));
-    const asJson = btn(t('JSON ({0}장)', [tagged.length]), () => exportAs('json'));
+    const asText = btn(t('tools.txt', [tagged.length]), () => exportAs('txt'));
+    const asJson = btn(t('tools.json', [tagged.length]), () => exportAs('json'));
     asText.disabled = asJson.disabled = !tagged.length || tagged.length > 500;
     const row = el('div', 'tl-row');
     row.append(asText, asJson);
-    box.append(
-      row,
-      el(
-        'small',
-        'tl-muted',
-        t(
-          'TXT는 이미지마다 캡션 파일 하나를 이미지 ZIP과 같은 이름으로 묶어 LoRA 학습용으로 함께 풀 수 있습니다.',
-        ),
-      ),
-    );
+    box.append(row, el('small', 'tl-muted', t('tools.txt_packs_one_caption_file_per')));
     return box;
   }
 
@@ -831,9 +776,7 @@ export function createTools(ctx) {
     try {
       const result = await ctx.api('/api/jobs/postprocess', {ids, op, options});
       state.postPending += result.jobs.length;
-      ctx.notify(
-        t('{0}장을 후처리 대기열에 넣었습니다. 결과는 목록 끝에 추가됩니다.', [result.jobs.length]),
-      );
+      ctx.notify(t('tools.queued_images_for_post_processing_results', [result.jobs.length]));
       ctx.onQueueChanged?.();
       poll();
     } catch (error) {
@@ -854,17 +797,13 @@ export function createTools(ctx) {
   async function startDetect() {
     const ids = chosenIds();
     const masked = state.items.filter((i) => ids.includes(i.id) && i.mask).length;
-    if (
-      masked &&
-      !window.confirm(t('마스크가 이미 있는 {0}장은 검출 결과로 바뀝니다. 계속할까요?', [masked]))
-    )
-      return;
+    if (masked && !window.confirm(t('tools.of_these_images_already_have_a', [masked]))) return;
     const options = {confidence: state.censor.confidence};
     if (state.censor.labels.length) options.labels = state.censor.labels;
     try {
       const result = await ctx.api('/api/jobs/postprocess', {ids, op: 'detect', options});
       state.postPending += result.jobs.length;
-      ctx.notify(t('{0}장의 가림 부위 검출을 대기열에 넣었습니다.', [result.jobs.length]));
+      ctx.notify(t('tools.queued_area_detection_for_images', [result.jobs.length]));
       ctx.onQueueChanged?.();
       poll();
     } catch (error) {
@@ -874,11 +813,7 @@ export function createTools(ctx) {
   async function startSplit() {
     const ids = chosenIds();
     const masked = state.items.filter((i) => ids.includes(i.id) && i.alpha_mask).length;
-    if (
-      masked &&
-      !window.confirm(t('마스크가 이미 있는 {0}장은 검출 결과로 바뀝니다. 계속할까요?', [masked]))
-    )
-      return;
+    if (masked && !window.confirm(t('tools.of_these_images_already_have_a', [masked]))) return;
     const a = state.post.alpha;
     try {
       const result = await ctx.api('/api/jobs/postprocess', {
@@ -887,7 +822,7 @@ export function createTools(ctx) {
         options: {method: a.method, confidence: Number(a.confidence)},
       });
       state.postPending += result.jobs.length;
-      ctx.notify(t('{0}장의 배경 분리를 대기열에 넣었습니다.', [result.jobs.length]));
+      ctx.notify(t('tools.queued_background_splitting_for_images', [result.jobs.length]));
       ctx.onQueueChanged?.();
       poll();
     } catch (error) {
@@ -920,7 +855,7 @@ export function createTools(ctx) {
     try {
       if (state.editor?.isDirty()) await state.editor.save();
       await ctx.api('/api/tools/alpha', {id: state.current, ...alphaBody()});
-      ctx.notify(t('배경을 투명하게 만든 이미지를 목록 끝에 추가했습니다.'));
+      ctx.notify(t('tools.added_the_image_with_a_transparent'));
       await loadItems();
     } catch (error) {
       ctx.notify(error.message, true);
@@ -945,14 +880,12 @@ export function createTools(ctx) {
         ctx.notify(`${target.name}: ${error.message}`, true);
       }
     }
-    ctx.notify(t('{0}장에 적용했습니다. 마스크가 없는 {1}장은 건너뛰었습니다.', [done, skipped]));
+    ctx.notify(t('tools.applied_to_images_without_a_mask', [done, skipped]));
     await loadItems();
   }
   function applyChosenButton(kind) {
     const count = chosenWithMask(kind).length;
-    const button = btn(t('마스크가 있는 선택 이미지 {0}장에 적용', [count]), () =>
-      applyChosen(kind),
-    );
+    const button = btn(t('tools.apply_to_chosen_images_with_a', [count]), () => applyChosen(kind));
     button.disabled = !count || !!ctx.preview;
     return button;
   }
@@ -962,11 +895,11 @@ export function createTools(ctx) {
     const a = state.post.alpha;
     const info = state.postInfo;
     const item = current();
-    box.append(el('h4', '', t('1. 배경 분리 (선택)')));
+    box.append(el('h4', '', t('tools.1_split_the_background_optional')));
     const method = el('select');
     for (const [value, text] of [
-      ['isnet', t('isnet-anime (애니 일러스트)')],
-      ['person', t('인물 분할 (YOLO person)')],
+      ['isnet', t('tools.isnet_anime_anime_illustrations')],
+      ['person', t('tools.person_segmentation_yolo_person')],
     ]) {
       const option = el('option', '', text);
       option.value = value;
@@ -977,60 +910,58 @@ export function createTools(ctx) {
       a.method = method.value;
       renderTools();
     });
-    box.append(field(t('방식'), method));
+    box.append(field(t('common.method'), method));
     if (a.method === 'person') {
       const confidence = input('number', a.confidence, {min: 0, max: 1, step: 0.05});
       confidence.addEventListener('input', () => (a.confidence = Number(confidence.value)));
-      box.append(field(t('검출 신뢰도'), confidence));
+      box.append(field(t('tools.detection_confidence'), confidence));
     }
     const count = chosenIds().length;
-    const split = btn(t('선택한 {0}장 배경 분리', [count]), startSplit);
+    const split = btn(t('tools.split_the_background_of_selected', [count]), startSplit);
     split.disabled = !count || !!ctx.preview || !info?.available || !info.ops?.alpha;
     box.append(split);
     if (info && !info.available) box.append(el('p', 'tl-error', tr(info.error)));
 
-    box.append(el('h4', '', t('2. 마스크 고치기')));
-    const save = btn(t('마스크 저장'), saveMask);
+    box.append(el('h4', '', t('tools.2_fix_the_mask')));
+    const save = btn(t('tools.save_mask'), saveMask);
     save.disabled = !item || !state.editor?.isDirty() || !!ctx.preview;
     box.append(
       el(
         'p',
         'tl-muted',
         item?.alpha_mask
-          ? t('마스크: {0}', [
-              item.alpha_mask.source === 'detected' ? t('검출됨') : t('직접 수정함'),
+          ? t('tools.mask', [
+              item.alpha_mask.source === 'detected'
+                ? t('tools.detected')
+                : t('tools.edited_by_hand'),
             ])
-          : t('마스크 없음'),
+          : t('tools.no_mask'),
       ),
       save,
     );
 
-    box.append(el('h4', '', t('3. 적용')));
+    box.append(el('h4', '', t('tools.3_apply')));
     const numberOf = (key, attrs) => {
       const control = input('number', a[key], attrs);
       control.addEventListener('input', () => (a[key] = Number(control.value)));
       return control;
     };
-    const apply = btn(t('현재 이미지에 적용'), applyAlpha, 'tl-primary');
+    const apply = btn(t('tools.apply_to_this_image_2'), applyAlpha, 'tl-primary');
     apply.disabled = !item || (!item.alpha_mask && !state.editor?.isDirty()) || !!ctx.preview;
     box.append(
       field(
-        t('마스크 확장(px)'),
+        t('tools.grow_mask_px'),
         numberOf('grow', {min: -64, max: 64}),
-        t('음수면 안쪽으로 줄입니다.'),
+        t('tools.negative_values_shrink_it'),
       ),
       field(
-        t('경계 부드럽게(px)'),
+        t('tools.soft_edge_px'),
         numberOf('feather', {min: 0, max: 64}),
-        t('1536px 이미지라면 0~1px부터 보세요.'),
+        t('tools.for_a_1536px_image_start_with'),
       ),
       apply,
       applyChosenButton('alpha'),
-      el(
-        'small',
-        'tl-muted',
-        t('원본 색은 그대로 두고 배경만 투명하게 만든 PNG를 새로 저장합니다.'),
-      ),
+      el('small', 'tl-muted', t('tools.saves_a_new_png_with_only')),
     );
     box.append(whereSaved());
     return box;
@@ -1046,7 +977,7 @@ export function createTools(ctx) {
         options,
       });
       state.postPending += result.jobs.length;
-      ctx.notify(t('인페인트를 대기열에 넣었습니다. 결과는 목록 끝에 추가됩니다.'));
+      ctx.notify(t('tools.inpaint_queued_the_result_is_added'));
       ctx.onQueueChanged?.();
       poll();
     } catch (error) {
@@ -1068,19 +999,19 @@ export function createTools(ctx) {
       p.negative = recorded ? found.negative || '' : '';
     }
 
-    box.append(el('h4', '', t('1. 다시 그릴 부분')));
-    const save = btn(t('마스크 저장'), saveMask);
+    box.append(el('h4', '', t('tools.1_area_to_redraw')));
+    const save = btn(t('tools.save_mask'), saveMask);
     save.disabled = !item || !state.editor?.isDirty() || !!ctx.preview;
     box.append(
       el(
         'p',
         'tl-muted',
-        item?.inpaint_mask ? t('마스크: {0}', [t('직접 수정함')]) : t('마스크 없음'),
+        item?.inpaint_mask ? t('tools.mask', [t('tools.edited_by_hand')]) : t('tools.no_mask'),
       ),
       save,
     );
 
-    box.append(el('h4', '', t('2. 프롬프트')));
+    box.append(el('h4', '', t('tools.2_prompt')));
     const prompt = (key, label, hint) => {
       const area = el('textarea');
       area.rows = key === 'positive' ? 5 : 3;
@@ -1093,11 +1024,11 @@ export function createTools(ctx) {
       );
     };
     box.append(
-      prompt('positive', t('긍정'), t('이미지 기록의 프롬프트로 시작합니다. 고칠 부분을 설명하는 태그를 더해 보세요.')),
-      prompt('negative', t('제외')),
+      prompt('positive', t('tools.positive'), t('tools.starts_from_the_image_s_recorded')),
+      prompt('negative', t('tools.negative')),
     );
 
-    box.append(el('h4', '', t('3. 다시 그리기')));
+    box.append(el('h4', '', t('tools.3_redraw')));
     const numberOf = (key, attrs) => {
       const control = input('number', p[key], attrs);
       control.addEventListener('input', () => (p[key] = Number(control.value)));
@@ -1105,8 +1036,8 @@ export function createTools(ctx) {
     };
     const area = el('select');
     for (const [value, text] of [
-      ['crop', t('마스크 주변만 크게 (권장)')],
-      ['full', t('이미지 전체')],
+      ['crop', t('tools.mask_area_enlarged_recommended')],
+      ['full', t('tools.whole_image')],
     ]) {
       const option = el('option', '', text);
       option.value = value;
@@ -1117,32 +1048,34 @@ export function createTools(ctx) {
       p.area = area.value;
       renderTools();
     });
-    box.append(
-      field(
-        t('다시 그릴 영역'),
-        area,
-        t('마스크 주변만 잘라 생성 크기로 키워 그린 뒤 다시 붙입니다. 손가락처럼 작은 부분이 더 또렷해집니다.'),
-      ),
-    );
+    box.append(field(t('tools.area_to_redraw'), area, t('tools.crops_around_the_mask_redraws_it')));
     if (p.area === 'crop')
       box.append(
         field(
-          t('주변 여백(px)'),
+          t('tools.context_padding_px'),
           numberOf('padding', {min: 0, max: 512, step: 16}),
-          t('마스크 바깥으로 함께 보여 줄 범위. 넓을수록 주변과 잘 어울립니다.'),
+          t('tools.how_much_around_the_mask_the'),
         ),
       );
     box.append(
       field(
-        t('디노이즈'),
+        t('tools.denoise'),
         numberOf('denoise', {min: 0.05, max: 1, step: 0.05}),
-        t('높을수록 많이 바뀝니다. 손·소품 고치기는 0.5~0.7부터 보세요.'),
+        t('tools.higher_changes_more_for_hands_or'),
       ),
-      field(t('스텝'), numberOf('steps', {min: 0, max: 60}), t('0이면 원본과 같은 스텝')),
-      field(t('마스크 확장(px)'), numberOf('grow', {min: -64, max: 64}), t('음수면 안쪽으로 줄입니다.')),
-      field(t('경계 부드럽게(px)'), numberOf('feather', {min: 0, max: 64})),
+      field(
+        t('tools.steps'),
+        numberOf('steps', {min: 0, max: 60}),
+        t('tools.0_uses_the_image_s_own'),
+      ),
+      field(
+        t('tools.grow_mask_px'),
+        numberOf('grow', {min: -64, max: 64}),
+        t('tools.negative_values_shrink_it'),
+      ),
+      field(t('tools.soft_edge_px'), numberOf('feather', {min: 0, max: 64})),
     );
-    const run = btn(t('현재 이미지 인페인트'), startInpaint, 'tl-primary');
+    const run = btn(t('tools.inpaint_this_image'), startInpaint, 'tl-primary');
     run.disabled =
       !item ||
       !recorded ||
@@ -1152,25 +1085,16 @@ export function createTools(ctx) {
       !info.ops?.inpaint;
     box.append(run);
     if (item && analysis && !recorded)
-      box.append(
-        el('p', 'tl-error', t('Asset Studio 제작 기록이 없는 이미지는 인페인트를 쓸 수 없습니다.')),
-      );
+      box.append(el('p', 'tl-error', t('tools.inpaint_needs_an_image_made_with')));
     if (info && !info.available) box.append(el('p', 'tl-error', tr(info.error)));
-    box.append(
-      el(
-        'small',
-        'tl-muted',
-        t('그 이미지의 모델·LoRA로 다시 그립니다. 칠하지 않은 부분은 원본 픽셀 그대로 남습니다.'),
-      ),
-      whereSaved(),
-    );
+    box.append(el('small', 'tl-muted', t('tools.redraws_with_the_image_s_own')), whereSaved());
     return box;
   }
 
   async function saveMask() {
     try {
       await state.editor.save();
-      ctx.notify(t('마스크를 저장했습니다.'));
+      ctx.notify(t('tools.saved_the_mask'));
       renderTools();
     } catch (error) {
       ctx.notify(error.message, true);
@@ -1180,7 +1104,7 @@ export function createTools(ctx) {
     try {
       if (state.editor?.isDirty()) await state.editor.save();
       await ctx.api('/api/tools/censor', {id: state.current, ...censorBody()});
-      ctx.notify(t('가림 처리한 이미지를 목록 끝에 추가했습니다.'));
+      ctx.notify(t('tools.added_the_censored_image_at_the'));
       await loadItems();
     } catch (error) {
       ctx.notify(error.message, true);
@@ -1192,7 +1116,7 @@ export function createTools(ctx) {
     const c = state.censor;
     const info = state.postInfo;
     const item = current();
-    box.append(el('h4', '', t('1. 부위 검출 (선택)')));
+    box.append(el('h4', '', t('tools.1_detect_areas_optional')));
     const labels = el('div', 'tl-chips');
     for (const label of CENSOR_LABELS) {
       const check = el('label', 'tl-check');
@@ -1209,38 +1133,38 @@ export function createTools(ctx) {
     const confidence = input('number', c.confidence, {min: 0, max: 1, step: 0.05});
     confidence.addEventListener('input', () => (c.confidence = Number(confidence.value)));
     const count = chosenIds().length;
-    const detect = btn(t('선택한 {0}장 부위 검출', [count]), startDetect);
+    const detect = btn(t('tools.detect_areas_in_selected', [count]), startDetect);
     detect.disabled = !count || !!ctx.preview || !info?.available || !info.ops?.detect;
-    box.append(field(t('가릴 부위'), labels), field(t('검출 신뢰도'), confidence), detect);
-    if (info && !info.available) box.append(el('p', 'tl-error', tr(info.error)));
     box.append(
-      el(
-        'small',
-        'tl-muted',
-        t('검출 없이 가운데에서 직접 칠해도 됩니다. 자동 검출은 놓칠 수 있으니 꼭 확인하세요.'),
-      ),
+      field(t('tools.areas_to_cover'), labels),
+      field(t('tools.detection_confidence'), confidence),
+      detect,
     );
+    if (info && !info.available) box.append(el('p', 'tl-error', tr(info.error)));
+    box.append(el('small', 'tl-muted', t('tools.you_can_also_paint_in_the')));
 
-    box.append(el('h4', '', t('2. 마스크 고치기')));
-    const save = btn(t('마스크 저장'), saveMask);
+    box.append(el('h4', '', t('tools.2_fix_the_mask')));
+    const save = btn(t('tools.save_mask'), saveMask);
     save.disabled = !item || !state.editor?.isDirty() || !!ctx.preview;
     box.append(
       el(
         'p',
         'tl-muted',
         item?.mask
-          ? t('마스크: {0}', [item.mask.source === 'detected' ? t('검출됨') : t('직접 수정함')])
-          : t('마스크 없음'),
+          ? t('tools.mask', [
+              item.mask.source === 'detected' ? t('tools.detected') : t('tools.edited_by_hand'),
+            ])
+          : t('tools.no_mask'),
       ),
       save,
     );
 
-    box.append(el('h4', '', t('3. 적용')));
+    box.append(el('h4', '', t('tools.3_apply')));
     const treatment = el('select');
     for (const [value, text] of [
-      ['mosaic', t('모자이크')],
-      ['blur', t('흐림')],
-      ['color', t('단색')],
+      ['mosaic', t('tools.mosaic')],
+      ['blur', t('tools.blur')],
+      ['color', t('tools.solid_color')],
     ]) {
       const option = el('option', '', text);
       option.value = value;
@@ -1258,36 +1182,36 @@ export function createTools(ctx) {
       control.addEventListener('input', () => (c[key] = Number(control.value)));
       return control;
     };
-    box.append(field(t('방식'), treatment));
+    box.append(field(t('common.method'), treatment));
     if (c.treatment === 'color') {
       const color = input('color', c.color);
       color.addEventListener('input', () => (c.color = color.value));
       box.append(
-        field(t('색'), color),
-        field(t('불투명도(%)'), numberOf('opacity', {min: 0, max: 100, step: 5})),
+        field(t('tools.color'), color),
+        field(t('tools.opacity'), numberOf('opacity', {min: 0, max: 100, step: 5})),
       );
     } else {
       box.append(
         field(
-          c.treatment === 'mosaic' ? t('블록 크기(px)') : t('흐림 반경(px)'),
+          c.treatment === 'mosaic' ? t('tools.block_size_px') : t('tools.blur_radius_px'),
           numberOf('intensity', {min: 1, max: 256}),
         ),
       );
     }
     box.append(
       field(
-        t('마스크 확장(px)'),
+        t('tools.grow_mask_px'),
         numberOf('grow', {min: -64, max: 64}),
-        t('음수면 안쪽으로 줄입니다.'),
+        t('tools.negative_values_shrink_it'),
       ),
-      field(t('경계 부드럽게(px)'), numberOf('feather', {min: 0, max: 64})),
+      field(t('tools.soft_edge_px'), numberOf('feather', {min: 0, max: 64})),
     );
-    const apply = btn(t('현재 이미지에 가림 적용'), applyCensor, 'tl-primary');
+    const apply = btn(t('tools.apply_to_this_image'), applyCensor, 'tl-primary');
     apply.disabled = !item || (!item.mask && !state.editor?.isDirty()) || !!ctx.preview;
     box.append(
       apply,
       applyChosenButton('censor'),
-      el('small', 'tl-muted', t('원본은 그대로 두고 가린 이미지를 새 PNG로 저장합니다.')),
+      el('small', 'tl-muted', t('tools.the_original_stays_the_covered_image')),
     );
     box.append(whereSaved());
     return box;
@@ -1295,20 +1219,14 @@ export function createTools(ctx) {
 
   // Results of work images go beside the source, so passing one in the gallery adopts it.
   function whereSaved() {
-    return el(
-      'p',
-      'tl-muted',
-      t(
-        '작업 이미지(작품/캐릭터/의상 폴더)의 결과는 원본 옆에 새 후보로 저장되고, 갤러리에서 통과시키면 채택됩니다. 그 밖의 이미지는 outputs/_tools/에 저장됩니다.',
-      ),
-    );
+    return el('p', 'tl-muted', t('tools.results_of_work_images_work_character'));
   }
 
   function postForm() {
     const box = el('div');
     const info = state.postInfo;
     if (!info) {
-      box.append(el('p', 'tl-muted', t('후처리 노드를 확인하는 중…')));
+      box.append(el('p', 'tl-muted', t('tools.checking_post_processing_nodes')));
       return box;
     }
     if (!info.available) {
@@ -1330,7 +1248,7 @@ export function createTools(ctx) {
       p.op = op.value;
       renderTools();
     });
-    box.append(field(t('작업'), op));
+    box.append(field(t('common.jobs'), op));
     const choose = (target, key, choices) => {
       const n = el('select');
       for (const [value, text] of choices) {
@@ -1353,10 +1271,10 @@ export function createTools(ctx) {
     if (p.op === 'detail') {
       const stages = el('div', 'tl-chips');
       for (const [key, text] of [
-        ['face', t('얼굴')],
-        ['eye', t('눈')],
-        ['mouth', t('입')],
-        ['hand', t('손')],
+        ['face', t('tools.face')],
+        ['eye', t('tools.eyes')],
+        ['mouth', t('tools.mouth')],
+        ['hand', t('tools.hands')],
       ]) {
         const check = el('label', 'tl-check');
         const c = input('checkbox', p.detail[key]);
@@ -1365,26 +1283,20 @@ export function createTools(ctx) {
         stages.append(check);
       }
       box.append(
-        field(t('다시 그릴 부위'), stages, t('얼굴 → 눈 → 입 → 손 순서로 처리합니다.')),
+        field(t('tools.areas_to_redraw'), stages, t('tools.processed_in_order_face_eyes_mouth')),
         field(
-          t('디노이즈'),
+          t('tools.denoise'),
           number(p.detail, 'denoise', {min: 0.05, max: 1, step: 0.05}),
-          t('높을수록 많이 바뀝니다. 0.3~0.5 권장'),
+          t('tools.higher_changes_more_0_3_0'),
         ),
-        field(t('스텝'), number(p.detail, 'steps', {min: 1, max: 60})),
-        el(
-          'small',
-          'tl-muted',
-          t(
-            'Asset Studio로 만든 이미지만 됩니다. 그 이미지의 모델·LoRA·프롬프트로 다시 그립니다. 얼굴 인상이 바뀔 수 있으니 결과를 확인하세요.',
-          ),
-        ),
+        field(t('tools.steps'), number(p.detail, 'steps', {min: 1, max: 60})),
+        el('small', 'tl-muted', t('tools.only_images_made_with_asset_studio')),
       );
     } else {
       if (!p.upscale.model) p.upscale.model = info.upscale_models[0] || '';
       box.append(
         field(
-          t('모델'),
+          t('common.model'),
           choose(
             p.upscale,
             'model',
@@ -1392,25 +1304,21 @@ export function createTools(ctx) {
           ),
         ),
         field(
-          t('최종 배율'),
+          t('tools.final_scale'),
           number(p.upscale, 'scale', {min: 0.25, max: 8, step: 0.25}),
-          t('모델 배율과 달라도 마지막에 맞춥니다.'),
+          t('tools.resized_at_the_end_if_it'),
         ),
-        el(
-          'p',
-          'tl-caution',
-          t(
-            '업스케일하면 투명도(알파)가 사라집니다. 투명한 배경이 필요하면 업스케일한 뒤에 배경 투명화를 하세요.',
-          ),
-        ),
+        el('p', 'tl-caution', t('tools.upscaling_removes_transparency_alpha_if_you')),
       );
     }
     const count = chosenIds().length;
-    const run = btn(t('선택한 {0}장 처리', [count]), startPost, 'tl-primary');
+    const run = btn(t('tools.process_selected', [count]), startPost, 'tl-primary');
     run.disabled = !count || !!ctx.preview;
     const source =
-      info.prefix === 'AssetStudio' ? t('Asset Studio 사본') : t('AtelierX 원본 (사본 연결 전)');
-    box.append(run, el('p', 'tl-muted', t('노드: {0} · 생성 대기열을 함께 씁니다.', [source])));
+      info.prefix === 'AssetStudio'
+        ? t('tools.asset_studio_copy')
+        : t('tools.atelierx_original_before_the_copy_is');
+    box.append(run, el('p', 'tl-muted', t('tools.nodes_shares_the_generation_queue', [source])));
     box.append(whereSaved());
     return box;
   }
@@ -1418,12 +1326,12 @@ export function createTools(ctx) {
   function renderTools() {
     const tabs = el('div', 'tl-tabs');
     for (const [key, text] of [
-      ['convert', t('WebP 변환')],
-      ['tag', t('태그 분석')],
-      ['post', t('후처리')],
-      ['censor', t('가림 처리')],
-      ['alpha', t('배경 투명화')],
-      ['inpaint', t('인페인트')],
+      ['convert', t('tools.webp_conversion')],
+      ['tag', t('tools.tagging')],
+      ['post', t('tools.post_processing')],
+      ['censor', t('tools.censor')],
+      ['alpha', t('tools.background_removal')],
+      ['inpaint', t('tools.inpaint')],
     ]) {
       const tab = btn(text, () => {
         if (!leaveEditor()) return;
@@ -1436,10 +1344,15 @@ export function createTools(ctx) {
     }
     toolPanel.replaceChildren(
       tabs,
-      el('p', 'tl-muted', t('선택 {0}장', [chosenIds().length])),
-      {convert: convertForm, tag: tagForm, post: postForm, censor: censorForm, alpha: alphaForm, inpaint: inpaintForm}[
-        state.tab
-      ](),
+      el('p', 'tl-muted', t('common.selected', [chosenIds().length])),
+      {
+        convert: convertForm,
+        tag: tagForm,
+        post: postForm,
+        censor: censorForm,
+        alpha: alphaForm,
+        inpaint: inpaintForm,
+      }[state.tab](),
     );
   }
 

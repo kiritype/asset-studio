@@ -1,10 +1,12 @@
 """Check the translation catalogs against the code.
 
-    python tools/i18n_check.py            # report missing and unused keys
+    python tools/i18n_check.py
 
-Keys are the Korean source text: every t('…') in static/js and every Korean message in
-asset_studio/ (f-string and "+" parts become {0}, {1}…). Each catalog in static/i18n must
-have every key with the same placeholders.
+Keys look like ``jobs.queue_n``: every t('key') in static/js, every data-i18n key in
+static/studio.html and every Msg('server.…', 'English', …) in asset_studio/. Each catalog
+in static/i18n (ko, en, ja, zh-CN) must have every key with the same placeholders, en.json
+must match the English text written in the code, and no Korean may be left in the code
+outside the few places listed in ALLOWED_HANGUL.
 """
 
 import ast
@@ -15,105 +17,107 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HANGUL = re.compile('[가-힣]')
-LANGUAGES = ('en', 'ja', 'zh-CN')
-JS_KEY = re.compile(r"""\bt\(\s*'((?:[^'\\]|\\.)*)'""")
-# Keys only used in markup (data-i18n attributes).
+LANGUAGES = ('ko', 'en', 'ja', 'zh-CN')
+JS_KEY = re.compile(r"""\bt\(\s*'([\w.]+)'""")
 HTML_KEY = re.compile(r'data-i18n(?:-title|-label)?="([^"]+)"')
+PLACEHOLDER = re.compile(r'\{\w+\}')
+# Korean that is data, not interface text.
+ALLOWED_HANGUL = {
+    'asset_studio/library/layout.py',  # labels data/ stored before translation (LEGACY_LABELS)
+    'static/js/lib/prompt_format.js',  # Korean words in a prompt-splitting pattern
+    'static/js/lib/job_requests.js',  # a comment naming the Korean UI label
+}
 
 
-def _cook(raw):
-    return re.sub(r'\\(.)', lambda m: {'n': '\n', 't': '\t'}.get(m.group(1), m.group(1)), raw)
+def catalogs():
+    folder = ROOT / 'static' / 'i18n'
+    return {lang: json.loads((folder / f'{lang}.json').read_text('utf-8')) for lang in LANGUAGES}
 
 
 def frontend_keys():
     keys = set()
     for path in (ROOT / 'static' / 'js').rglob('*.js'):
-        keys |= {_cook(m) for m in JS_KEY.findall(path.read_text(encoding='utf-8'))}
+        keys |= set(JS_KEY.findall(path.read_text(encoding='utf-8')))
     keys |= set(HTML_KEY.findall((ROOT / 'static' / 'studio.html').read_text(encoding='utf-8')))
     return keys
 
 
-def _template(node):
-    counter = [0]
-
-    def walk(n):
-        if isinstance(n, ast.Constant) and isinstance(n.value, str):
-            return n.value
-        if isinstance(n, ast.JoinedStr):
-            out = ''
-            for value in n.values:
-                if isinstance(value, ast.Constant):
-                    out += value.value
-                else:
-                    out += '{%d}' % counter[0]
-                    counter[0] += 1
-            return out
-        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
-            return walk(n.left) + walk(n.right)
-        out = '{%d}' % counter[0]
-        counter[0] += 1
-        return out
-
-    return walk(node)
-
-
-def server_keys():
-    keys = set()
-
-    class Visitor(ast.NodeVisitor):
-        def visit_BinOp(self, node):
-            if isinstance(node.op, ast.Add):
-                text = _template(node)
-                if HANGUL.search(re.sub(r'\{\d+\}', '', text)):
-                    keys.add(text)
-                    return
-            self.generic_visit(node)
-
-        def visit_JoinedStr(self, node):
-            text = _template(node)
-            if HANGUL.search(re.sub(r'\{\d+\}', '', text)):
-                keys.add(text)
-
-        def visit_Constant(self, node):
-            if isinstance(node.value, str) and HANGUL.search(node.value):
-                keys.add(node.value)
-
+def server_messages():
+    """{key: English text} from Msg('key', 'text', ...) calls."""
+    found = {}
     for path in (ROOT / 'asset_studio').rglob('*.py'):
-        Visitor().visit(ast.parse(path.read_text(encoding='utf-8')))
-    # Docstrings are not messages.
-    return {k for k in keys if '\n' not in k.strip() or len(k) < 300}
+        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+            if (
+                isinstance(node, ast.Call)
+                and getattr(node.func, 'id', None) == 'Msg'
+                and len(node.args) >= 2
+                and all(isinstance(a, ast.Constant) for a in node.args[:2])
+            ):
+                found[node.args[0].value] = node.args[1].value
+    return found
+
+
+def hangul_in_code():
+    """Korean outside comments in code that should only hold keys."""
+    places = []
+    files = [*(ROOT / 'asset_studio').rglob('*.py'), *(ROOT / 'static' / 'js').rglob('*.js')]
+    files.append(ROOT / 'static' / 'studio.html')
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        if rel in ALLOWED_HANGUL:
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+            code = re.split(r'\s#\s|^\s*#|//', line)[0]
+            if HANGUL.search(code):
+                places.append(f'{rel}:{number}')
+    return places
 
 
 def check():
-    """{language: {'missing': [...], 'placeholders': [...], 'unused': [...]}}."""
-    wanted = frontend_keys() | server_keys()
-    report = {}
-    for language in LANGUAGES:
-        catalog = json.loads((ROOT / 'static' / 'i18n' / f'{language}.json').read_text('utf-8'))
-        placeholders = [
-            key
-            for key in wanted & set(catalog)
-            if sorted(re.findall(r'\{\w+\}', key)) != sorted(re.findall(r'\{\w+\}', catalog[key]))
-        ]
-        report[language] = {
-            'missing': sorted(wanted - set(catalog)),
-            'placeholders': sorted(placeholders),
-            'unused': sorted(set(catalog) - wanted),
-        }
-    return report
+    """{'missing': {lang: [...]}, 'placeholders': [...], 'english': [...], 'unused': [...],
+    'hangul': [...]}"""
+    cats = catalogs()
+    server = server_messages()
+    wanted = frontend_keys() | set(server)
+    missing = {lang: sorted(wanted - set(cat)) for lang, cat in cats.items()}
+    placeholders = sorted(
+        key
+        for key in wanted & set(cats['ko'])
+        if any(
+            key in cats[lang]
+            and sorted(PLACEHOLDER.findall(cats[lang][key]))
+            != sorted(PLACEHOLDER.findall(cats['ko'][key]))
+            for lang in LANGUAGES
+        )
+    )
+    english = sorted(key for key, text in server.items() if cats['en'].get(key) != text)
+    unused = sorted(set(cats['ko']) - wanted)
+    return {
+        'missing': missing,
+        'placeholders': placeholders,
+        'english': english,
+        'unused': unused,
+        'hangul': hangul_in_code(),
+    }
+
+
+def problems(report):
+    return bool(
+        any(report['missing'].values())
+        or report['placeholders']
+        or report['english']
+        or report['hangul']
+    )
 
 
 if __name__ == '__main__':
     report = check()
-    failed = False
-    for language, result in report.items():
-        print(
-            f'{language}: missing {len(result["missing"])}, placeholder mismatch '
-            f'{len(result["placeholders"])}, unused {len(result["unused"])}'
-        )
-        for key in result['missing'][:30]:
+    for lang, keys in report['missing'].items():
+        print(f'{lang}: missing {len(keys)}')
+        for key in keys[:30]:
             print('  missing:', key)
-        for key in result['placeholders'][:30]:
-            print('  placeholders:', key)
-        failed |= bool(result['missing'] or result['placeholders'])
-    sys.exit(1 if failed else 0)
+    for name in ('placeholders', 'english', 'unused', 'hangul'):
+        print(f'{name}: {len(report[name])}')
+        for item in report[name][:30]:
+            print('  ', item)
+    sys.exit(1 if problems(report) else 0)
