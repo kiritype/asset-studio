@@ -19,6 +19,96 @@ URL = f'http://127.0.0.1:{PORT}'
 opener = build_opener(ProxyHandler({}))
 TITLE = 'Asset Studio'
 
+# Message boxes follow the Studio language setting, or Windows' language when it is "auto".
+TEXT = {
+    'running': {
+        'ko': '생성 중인 작업 {n}개 (중단됨으로 남습니다)',
+        'en': '{n} job(s) generating (they will be marked as stopped)',
+        'ja': '生成中のジョブ {n} 件(中断として残ります)',
+        'zh-CN': '正在生成的任务 {n} 个(将记为已中断)',
+    },
+    'queued': {
+        'ko': '대기 중인 작업 {n}개 (다음 실행 때 일시정지 상태로 남습니다)',
+        'en': '{n} queued job(s) (the queue stays paused at the next start)',
+        'ja': '待機中のジョブ {n} 件(次回起動時は一時停止のまま残ります)',
+        'zh-CN': '排队中的任务 {n} 个(下次启动时保持暂停)',
+    },
+    'unknown_jobs': {
+        'ko': '작업 상태를 확인하지 못했습니다',
+        'en': 'The job status could not be checked',
+        'ja': 'ジョブの状態を確認できませんでした',
+        'zh-CN': '无法确认任务状态',
+    },
+    'training': {
+        'ko': 'LoRA 학습 중 (학습이 중단됩니다)',
+        'en': 'A LoRA is training (training will stop)',
+        'ja': 'LoRA 学習中(学習が中断されます)',
+        'zh-CN': 'LoRA 训练中(训练将中断)',
+    },
+    'confirm_stop': {
+        'ko': '지금 멈추면 다음이 중단됩니다.\n\n- {reasons}\n\n그래도 멈출까요?',
+        'en': 'Stopping now will cut off:\n\n- {reasons}\n\nStop anyway?',
+        'ja': '今止めると次のものが中断されます。\n\n- {reasons}\n\nそれでも止めますか?',
+        'zh-CN': '现在停止会中断以下内容:\n\n- {reasons}\n\n仍要停止吗?',
+    },
+    'no_process': {
+        'ko': 'Asset Studio 프로세스를 찾지 못했습니다.',
+        'en': 'The Asset Studio process was not found.',
+        'ja': 'Asset Studio のプロセスが見つかりませんでした。',
+        'zh-CN': '未找到 Asset Studio 进程。',
+    },
+    'not_stopped': {
+        'ko': 'Asset Studio를 멈추지 못했습니다.',
+        'en': 'Asset Studio could not be stopped.',
+        'ja': 'Asset Studio を停止できませんでした。',
+        'zh-CN': '无法停止 Asset Studio。',
+    },
+    'not_started': {
+        'ko': 'Asset Studio를 실행하지 못했습니다. logs/launcher.log를 확인하세요.',
+        'en': 'Asset Studio could not start. See logs/launcher.log.',
+        'ja': 'Asset Studio を起動できませんでした。logs/launcher.log を確認してください。',
+        'zh-CN': '无法启动 Asset Studio。请查看 logs/launcher.log。',
+    },
+    'stopped': {
+        'ko': 'Asset Studio를 멈췄습니다.',
+        'en': 'Asset Studio has stopped.',
+        'ja': 'Asset Studio を停止しました。',
+        'zh-CN': 'Asset Studio 已停止。',
+    },
+    'not_running': {
+        'ko': 'Asset Studio가 실행 중이 아닙니다.',
+        'en': 'Asset Studio is not running.',
+        'ja': 'Asset Studio は実行されていません。',
+        'zh-CN': 'Asset Studio 未在运行。',
+    },
+    'restarted': {
+        'ko': 'Asset Studio를 다시 시작했습니다. 열려 있는 탭은 새로고침하세요.',
+        'en': 'Asset Studio has restarted. Reload any open tabs.',
+        'ja': 'Asset Studio を再起動しました。開いているタブは再読み込みしてください。',
+        'zh-CN': 'Asset Studio 已重新启动。请刷新已打开的标签页。',
+    },
+}
+
+
+def language():
+    try:
+        settings = json.loads((ROOT / 'data' / 'settings' / 'ui.json').read_text(encoding='utf-8'))
+        chosen = settings.get('language', 'auto')
+    except (OSError, ValueError):
+        chosen = 'auto'
+    if chosen in ('ko', 'en', 'ja', 'zh-CN'):
+        return chosen
+    if sys.platform == 'win32':
+        import ctypes
+
+        primary = ctypes.windll.kernel32.GetUserDefaultUILanguage() & 0x3FF
+        return {0x12: 'ko', 0x11: 'ja', 0x04: 'zh-CN'}.get(primary, 'en')
+    return 'en'
+
+
+def say(key, **values):
+    return TEXT[key][language()].format(**values)
+
 
 def message(text, icon=64, buttons=0):
     """A message box on Windows (pythonw has no console); prints elsewhere. Returns the answer."""
@@ -54,15 +144,15 @@ def busy_reasons():
         running = sum(job['status'] in ('running', 'cancelling') for job in jobs)
         queued = sum(job['status'] == 'queued' for job in jobs)
         if running:
-            reasons.append(f'생성 중인 작업 {running}개 (중단됨으로 남습니다)')
+            reasons.append(say('running', n=running))
         if queued:
-            reasons.append(f'대기 중인 작업 {queued}개 (다음 실행 때 일시정지 상태로 남습니다)')
+            reasons.append(say('queued', n=queued))
     except Exception:
-        reasons.append('작업 상태를 확인하지 못했습니다')
+        reasons.append(say('unknown_jobs'))
     try:
         gpu = get('/api/gpu')
         if gpu.get('holder') == 'training':
-            reasons.append('LoRA 학습 중 (학습이 중단됩니다)')
+            reasons.append(say('training'))
     except Exception:
         pass
     return reasons
@@ -107,13 +197,11 @@ def stop():
     if not healthy():
         return True
     reasons = busy_reasons()
-    if reasons and not ask(
-        '지금 멈추면 다음이 중단됩니다.\n\n- ' + '\n- '.join(reasons) + '\n\n그래도 멈출까요?'
-    ):
+    if reasons and not ask(say('confirm_stop', reasons='\n- '.join(reasons))):
         return False
     pid = server_pid()
     if pid is None:
-        message('Asset Studio 프로세스를 찾지 못했습니다.', icon=16)
+        message(say('no_process'), icon=16)
         return False
     # The queue is saved on every change, so a forced stop loses nothing that was saved.
     subprocess.run(['taskkill', '/PID', str(pid), '/T', '/F'], capture_output=True, check=False)
@@ -121,7 +209,7 @@ def stop():
         if not healthy() and server_pid() is None:
             return True
         time.sleep(0.25)
-    message('Asset Studio를 멈추지 못했습니다.', icon=16)
+    message(say('not_stopped'), icon=16)
     return False
 
 
@@ -142,7 +230,7 @@ def start(open_browser=True):
                 break
             time.sleep(0.25)
     if not healthy():
-        message('Asset Studio를 실행하지 못했습니다. logs/launcher.log를 확인하세요.', icon=16)
+        message(say('not_started'), icon=16)
         raise SystemExit(1)
     if open_browser:
         webbrowser.open(URL)
@@ -153,13 +241,13 @@ if __name__ == '__main__':
     if action == 'stop':
         was_running = healthy()
         if stop() and was_running:
-            message('Asset Studio를 멈췄습니다.')
+            message(say('stopped'))
         elif not was_running:
-            message('Asset Studio가 실행 중이 아닙니다.')
+            message(say('not_running'))
     elif action == 'restart':
         if stop():
             # Open tabs only need a reload; a new tab is opened when none was running.
             start(open_browser=False)
-            message('Asset Studio를 다시 시작했습니다. 열려 있는 탭은 새로고침하세요.')
+            message(say('restarted'))
     else:
         start()

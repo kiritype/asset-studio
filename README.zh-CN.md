@@ -62,12 +62,12 @@ Asset Studio 是一个本地 Web 应用，用 [ComfyUI](https://github.com/comfy
 
    没有此文件时使用 `PATH` 中的 `pythonw`。
 4. 可选功能需要 ComfyUI 自定义节点和模型。`tools/install_comfy_nodes.py` 会按[已验证版本](#已验证版本)
-   安装自定义节点，并把 Asset Studio 的节点包链接到 ComfyUI。用任意 Python 3 运行即可(ComfyUI 自带的
-   Python 也可以)。它会自动找到正在运行的 ComfyUI 及其 Python，在加上 `--yes` 之前只显示计划:
+   安装自定义节点，并把 Asset Studio 的节点包链接到 ComfyUI。请用 ComfyUI 的 Python 运行(便携版为
+   `python_embeded\python.exe`)；只输入 `python` 可能会打开 Microsoft Store。它会自动找到正在运行的 ComfyUI 及其 Python，在加上 `--yes` 之前只显示计划:
 
    ```bat
-   python tools\install_comfy_nodes.py
-   python tools\install_comfy_nodes.py --yes
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py --yes
    ```
 
    用 `--only tagger,alpha` 选择功能(`autocomplete`、`tagger`、`alpha`、`detect`、`detailer`)；ComfyUI
@@ -175,9 +175,12 @@ Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中
 训练会在独立的 Python 环境中运行 [anima_lora](https://github.com/sorryhyun/anima_lora)，需要单独安装:
 
 1. 安装 [uv](https://docs.astral.sh/uv/)，把 anima_lora 克隆到 Asset Studio 文件夹内的
-   `vendor/anima_lora`。Asset Studio 已用提交 `69ff962` 验证:
+   `vendor/anima_lora`。Asset Studio 已用提交 `69ff962` 验证，该提交还需要配套的 `anime_tools`(v0.7.5)
+   位于 `vendor/anime_tools`:
 
    ```bat
+   git clone https://github.com/sorryhyun/anime_tools.git vendor\anime_tools
+   git -C vendor\anime_tools checkout v0.7.5
    git clone https://github.com/sorryhyun/anima_lora.git vendor\anima_lora
    cd vendor\anima_lora
    git checkout 69ff962

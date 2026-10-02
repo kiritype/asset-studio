@@ -63,13 +63,14 @@ Asset Studio는 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)로 일관�
 
    이 파일이 없으면 `PATH`의 `pythonw`를 씁니다.
 4. 선택 기능에는 ComfyUI 커스텀 노드와 모델이 필요합니다. `tools/install_comfy_nodes.py`가 커스텀
-   노드를 [확인한 버전](#확인한-버전)으로 설치하고 Asset Studio 노드 묶음을 ComfyUI에 연결합니다. 아무
-   Python 3으로나 실행하면 됩니다(ComfyUI의 Python도 됨). 켜져 있는 ComfyUI와 그 Python을 스스로
+   노드를 [확인한 버전](#확인한-버전)으로 설치하고 Asset Studio 노드 묶음을 ComfyUI에 연결합니다. ComfyUI의
+   Python으로 실행하세요(포터블은 `python_embeded\python.exe`). 그냥 `python`이라고 치면 Microsoft
+   Store가 열릴 수 있습니다. 켜져 있는 ComfyUI와 그 Python을 스스로
    찾고, `--yes`를 붙이기 전에는 할 일만 보여 줍니다.
 
    ```bat
-   python tools\install_comfy_nodes.py
-   python tools\install_comfy_nodes.py --yes
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py --yes
    ```
 
    `--only tagger,alpha`로 기능을 고르고(`autocomplete`, `tagger`, `alpha`, `detect`, `detailer`),
@@ -189,9 +190,12 @@ Civitai의 검출 모델은 ZIP 파일입니다. `.pt` 파일을 풀어 표의 �
 설치합니다.
 
 1. [uv](https://docs.astral.sh/uv/)를 설치하고 anima_lora를 Asset Studio 폴더 안의
-   `vendor/anima_lora`에 받습니다. Asset Studio는 커밋 `69ff962`로 확인했습니다.
+   `vendor/anima_lora`에 받습니다. Asset Studio는 커밋 `69ff962`로 확인했고, 이 커밋은 짝이 되는
+   `anime_tools`(v0.7.5)가 `vendor/anime_tools`에 있어야 합니다.
 
    ```bat
+   git clone https://github.com/sorryhyun/anime_tools.git vendor\anime_tools
+   git -C vendor\anime_tools checkout v0.7.5
    git clone https://github.com/sorryhyun/anima_lora.git vendor\anima_lora
    cd vendor\anima_lora
    git checkout 69ff962

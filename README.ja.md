@@ -66,12 +66,13 @@ LoRA を学習します。自分の PC で動き、自分の ComfyUI と通信�
    このファイルがなければ `PATH` の `pythonw` を使います。
 4. 追加機能には ComfyUI のカスタムノードとモデルが必要です。`tools/install_comfy_nodes.py` が
    カスタムノードを[確認済みバージョン](#確認済みバージョン)で入れ、Asset Studio のノードパックを ComfyUI に
-   リンクします。どの Python 3 で実行してもかまいません(ComfyUI の Python でも可)。起動中の ComfyUI
+   リンクします。ComfyUI の Python で実行してください(ポータブル版は `python_embeded\python.exe`)。`python` だけだと
+   Microsoft Store が開くことがあります。起動中の ComfyUI
    とその Python を自動で見つけ、`--yes` を付けるまでは計画だけを表示します。
 
    ```bat
-   python tools\install_comfy_nodes.py
-   python tools\install_comfy_nodes.py --yes
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py --yes
    ```
 
    `--only tagger,alpha` で機能を選び(`autocomplete`、`tagger`、`alpha`、`detect`、`detailer`)、
@@ -193,9 +194,12 @@ Asset Studio のノードパックは[インストール](#インストール)�
 インストールが必要です。
 
 1. [uv](https://docs.astral.sh/uv/) をインストールし、anima_lora を Asset Studio フォルダー内の
-   `vendor/anima_lora` に取得します。Asset Studio はコミット `69ff962` で確認しました。
+   `vendor/anima_lora` に取得します。Asset Studio はコミット `69ff962` で確認しました。このコミットは対になる
+   `anime_tools`(v0.7.5)が `vendor/anime_tools` に必要です。
 
    ```bat
+   git clone https://github.com/sorryhyun/anime_tools.git vendor\anime_tools
+   git -C vendor\anime_tools checkout v0.7.5
    git clone https://github.com/sorryhyun/anima_lora.git vendor\anima_lora
    cd vendor\anima_lora
    git checkout 69ff962

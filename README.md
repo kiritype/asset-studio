@@ -71,12 +71,13 @@ texts are machine translations; corrections are welcome.
 4. Optional features need ComfyUI custom nodes and models.
    `tools/install_comfy_nodes.py` installs the custom nodes at the
    [tested versions](#tested-versions) and links Asset Studio's node pack into ComfyUI. Run it with
-   any Python 3 (ComfyUI's own is fine). It finds the running ComfyUI and its Python, and
+   ComfyUI's Python (for the portable build, `python_embeded\python.exe`); typing just
+   `python` may open the Microsoft Store instead. It finds the running ComfyUI and its Python, and
    only shows the plan until you add `--yes`:
 
    ```bat
-   python tools\install_comfy_nodes.py
-   python tools\install_comfy_nodes.py --yes
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py
+   C:\path\to\ComfyUI\venv\Scripts\python.exe tools\install_comfy_nodes.py --yes
    ```
 
    `--only tagger,alpha` picks features (`autocomplete`, `tagger`, `alpha`, `detect`,
@@ -207,9 +208,12 @@ Training runs [anima_lora](https://github.com/sorryhyun/anima_lora) in its own P
 environment. It is a separate install:
 
 1. Install [uv](https://docs.astral.sh/uv/) and clone anima_lora into `vendor/anima_lora`
-   inside the Asset Studio folder. Asset Studio was tested with commit `69ff962`:
+   inside the Asset Studio folder. Asset Studio was tested with commit `69ff962`, which
+   also needs its companion `anime_tools` (v0.7.5) in `vendor/anime_tools`:
 
    ```bat
+   git clone https://github.com/sorryhyun/anime_tools.git vendor\anime_tools
+   git -C vendor\anime_tools checkout v0.7.5
    git clone https://github.com/sorryhyun/anima_lora.git vendor\anima_lora
    cd vendor\anima_lora
    git checkout 69ff962

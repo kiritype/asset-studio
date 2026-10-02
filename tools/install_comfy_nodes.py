@@ -26,6 +26,13 @@ sys.path.insert(0, str(ROOT))
 from asset_studio import comfy_locate  # noqa: E402
 
 MANIFEST = ROOT / 'comfy_nodes' / 'nodes.json'
+KINDS = {
+    'portable': 'portable build',
+    'stability_matrix': 'Stability Matrix',
+    'desktop': 'desktop app',
+    'venv': 'git install with venv',
+    'unknown': 'unknown kind',
+}
 PACK = ROOT / 'comfy_nodes' / 'asset_studio_nodes'
 
 
@@ -109,15 +116,15 @@ def describe_step(step: dict) -> str:
     node, have = step['node'], step['have']
     name = f'{node["folder"]} {node["version"]} ({node["license"]})'
     if step['action'] == 'skip':
-        return f'  -  {name}: 고르지 않음'
+        return f'  -  {name}: not chosen'
     if step['action'] == 'install':
-        return f'  +  {name}: 설치 ({node["commit"][:7]})'
+        return f'  +  {name}: install ({node["commit"][:7]})'
     if step['action'] == 'blocked':
-        return f'  !  {name}: 같은 이름의 다른 폴더가 있어 건너뜀'
+        return f'  !  {name}: another folder has this name; skipped'
     current = have['version'] or have['commit'][:7] or '?'
     if step['action'] == 'ok':
-        return f'  =  {name}: 설치됨 ({have["folder"]})'
-    return f'  ~  {name}: 다른 버전 설치됨 ({have["folder"]}, {current}) — 그대로 둠'
+        return f'  =  {name}: installed ({have["folder"]})'
+    return f'  ~  {name}: another version is installed ({have["folder"]}, {current}); left alone'
 
 
 def run(cmd, cwd=None):
@@ -138,12 +145,23 @@ def install(step: dict, custom_nodes: Path, python: Path):
         run([python, 'install.py'], cwd=target)
 
 
-def link_pack(custom_nodes: Path) -> str:
+def pack_state(custom_nodes: Path) -> tuple[str, Path | None]:
+    """``ok`` when custom_nodes links to this checkout's node pack, ``other`` when it links
+    somewhere else (an older copy of Asset Studio), ``missing`` otherwise."""
     link = custom_nodes / 'asset_studio_nodes'
-    if link.exists():
-        return 'ok'
+    if not link.exists():
+        return 'missing', None
+    target = link.resolve()
+    return ('ok' if target == PACK.resolve() else 'other'), target
+
+
+def link_pack(custom_nodes: Path, state: str):
+    link = custom_nodes / 'asset_studio_nodes'
+    if state == 'other':
+        if not link.is_junction() and not link.is_symlink():
+            raise SystemExit(f'{link} is a real folder, not a link; move it away first.')
+        run(['cmd', '/c', 'rmdir', link])  # Removes the link only, not the folder it points to.
     run(['cmd', '/c', 'mklink', '/J', link, PACK])
-    return 'linked'
 
 
 def main(argv=None):
@@ -157,9 +175,9 @@ def main(argv=None):
     features = [f.strip() for f in args.only.split(',')] if args.only else None
     if features and (unknown := set(features) - set(manifest['features'])):
         parser.error(
-            '없는 기능: '
+            'unknown feature: '
             + ', '.join(sorted(unknown))
-            + ' (가능: '
+            + ' (choose from: '
             + ', '.join(manifest['features'])
             + ')'
         )
@@ -167,43 +185,49 @@ def main(argv=None):
     if args.comfy:
         comfy = Path(args.comfy)
         if not comfy_locate.is_comfy_dir(comfy):
-            parser.error(f'ComfyUI 폴더가 아닙니다(main.py 없음): {comfy}')
+            parser.error(f'not a ComfyUI folder (no main.py): {comfy}')
     else:
         found = comfy_locate.candidates()
         if not found:
-            parser.error('ComfyUI를 찾지 못했습니다. --comfy로 폴더를 알려 주세요.')
+            parser.error('no ComfyUI found; name its folder with --comfy')
         if len(found) > 1 and not found[0]['source'] == 'running':
-            print('ComfyUI가 여러 개 있습니다. --comfy로 하나를 고르세요:')
+            print('Several ComfyUI installs were found; choose one with --comfy:')
             for item in found:
-                print('  ', item['comfy_path'], f'({comfy_locate.KINDS[item["kind"]]})')
+                print('  ', item['comfy_path'], f'({KINDS[item["kind"]]})')
             return 2
         comfy = Path(found[0]['comfy_path'])
     python = Path(args.python) if args.python else comfy_locate.python_for(comfy)
     if not python or not python.is_file():
-        parser.error('ComfyUI의 Python을 찾지 못했습니다. --python으로 알려 주세요.')
+        parser.error("ComfyUI's Python was not found; name it with --python")
     custom_nodes = comfy / 'custom_nodes'
 
-    print(f'ComfyUI: {comfy} ({comfy_locate.KINDS[comfy_locate.kind_of(comfy)]})')
+    print(f'ComfyUI: {comfy} ({KINDS[comfy_locate.kind_of(comfy)]})')
     print(f'Python:  {python}')
-    print(f'확인한 ComfyUI 버전: {manifest["comfyui"]["version"]}')
+    print(f'Tested with ComfyUI {manifest["comfyui"]["version"]}')
     steps = plan(manifest, custom_nodes, features)
     for step in steps:
         print(describe_step(step))
-    pack = 'ok' if (custom_nodes / 'asset_studio_nodes').exists() else 'link'
-    print('  =  asset_studio_nodes: 연결됨' if pack == 'ok' else '  +  asset_studio_nodes: 연결')
+    pack, target = pack_state(custom_nodes)
+    print(
+        {
+            'ok': '  =  asset_studio_nodes: linked',
+            'other': f'  ~  asset_studio_nodes: linked to {target}; relink to this folder',
+            'missing': '  +  asset_studio_nodes: link',
+        }[pack]
+    )
     todo = [s for s in steps if s['action'] == 'install']
     if not todo and pack == 'ok':
-        print('할 일이 없습니다.')
+        print('Nothing to do.')
         return 0
     if not args.yes:
-        print('\n실행하려면 --yes를 붙여 다시 실행하세요.')
+        print('\nRun again with --yes to carry this out.')
         return 0
     for step in todo:
         print(f'\n[{step["node"]["folder"]}]')
         install(step, custom_nodes, python)
     if pack != 'ok':
-        link_pack(custom_nodes)
-    print('\n끝났습니다. ComfyUI를 재시작하세요.')
+        link_pack(custom_nodes, pack)
+    print('\nDone. Restart ComfyUI.')
     return 0
 
 
