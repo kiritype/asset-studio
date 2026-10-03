@@ -117,9 +117,13 @@ def check_options(op, options, info):
             'steps': _number(options, 'steps', 20, 1, 60, int),
         }
     if op == 'inpaint':
+        # A prompt left out (None) is the image's own; an empty one stays empty.
         prompts = {}
         for key in ('positive', 'negative'):
-            value = options.get(key, '')
+            value = options.get(key)
+            if value is None:
+                prompts[key] = None
+                continue
             if not isinstance(value, str) or len(value) > 8000:
                 raise ValueError(
                     Msg(
@@ -396,7 +400,9 @@ class PostprocessMixin:
                 sources[item['id']] = {
                     'settings': settings,
                     'positive': options.get('positive') or record['positive'],
-                    'negative': options.get('negative') or record.get('negative', ''),
+                    'negative': record.get('negative', '')
+                    if options.get('negative') is None
+                    else options['negative'],
                     'seed': secrets.randbits(32),
                 }
             if missing:

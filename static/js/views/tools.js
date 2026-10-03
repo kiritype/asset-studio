@@ -970,7 +970,13 @@ export function createTools(ctx) {
   async function startInpaint() {
     try {
       if (state.editor?.isDirty()) await state.editor.save();
-      const {for: _, ...options} = state.post.inpaint;
+      const {for: filledFor, ...options} = state.post.inpaint;
+      // Prompts not yet filled from this image's record are left to the server, which
+      // uses the record; once shown, what is in the boxes is sent (an emptied box too).
+      if (filledFor !== state.current) {
+        delete options.positive;
+        delete options.negative;
+      }
       const result = await ctx.api('/api/jobs/postprocess', {
         ids: [state.current],
         op: 'inpaint',

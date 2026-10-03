@@ -602,5 +602,42 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(copy.exists())
 
 
+    def recorded_for_inpaint(self):
+        """An uploaded image with an Asset Studio record and an inpaint mask, and a
+        function that queues an inpaint of an image."""
+        from asset_studio.generation.workflow import validate_settings
+
+        made = {
+            'positive': '1girl, smile',
+            'negative': 'blur',
+            'settings': validate_settings(SETTINGS, CATALOG),
+        }
+        raw = png('blue', size=(64, 64), text={'asset_studio': json.dumps(made)})
+        item = self.tools.upload('made.png', raw)['added'][0]
+        mask = Image.new('L', (64, 64), 0)
+        mask.paste(255, (20, 20, 40, 40))
+        self.tools.set_mask(item['id'], mask, 'edited', 'inpaint')
+        comfy = FakeComfy('white')
+        base = comfy.request
+        comfy.request = lambda path, body=None, raw=False: (
+            {'AtelierXUpscale': {}} if path == '/object_info' else base(path, body, raw)
+        )
+        comfy.upload = lambda name, raw: {'name': name}
+        self.app.comfy = comfy
+
+        def inpaint(item_id, **options):
+            body = {'ids': [item_id], 'op': 'inpaint', 'options': options}
+            return self.app.enqueue_postprocess(body)['jobs'][0]
+
+        return item, mask, inpaint
+
+    def test_inpaint_prompt_left_out_is_the_images_own_and_an_emptied_one_stays_empty(self):
+        item, _, inpaint = self.recorded_for_inpaint()
+        self.assertEqual(inpaint(item['id'])['post_source']['negative'], 'blur')
+        cleared = inpaint(item['id'], negative='', positive='1girl, open mouth')
+        self.assertEqual(cleared['post_source']['negative'], '')
+        self.assertEqual(cleared['post_source']['positive'], '1girl, open mouth')
+
+
 if __name__ == '__main__':
     unittest.main()
