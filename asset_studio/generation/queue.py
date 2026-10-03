@@ -15,7 +15,8 @@ from .workflow import validate_settings
 
 class JobQueueMixin:
     """Queue operations of ``Studio``. Expects ``jobs``, ``paused``, ``lock``, ``store``,
-    ``comfy``, ``library``, ``validation``, ``root`` and ``state_path`` on the instance."""
+    ``comfy``, ``library``, ``validation``, ``tools``, ``root`` and ``state_path`` on the
+    instance."""
 
     def persist(self):
         atomic_json(
@@ -239,6 +240,10 @@ class JobQueueMixin:
                 except Exception:
                     self.jobs = previous
                     raise
+                # A job's inpaint mask copy goes with the last job using it (retries share it).
+                self.tools.prune_job_masks(
+                    {j['post_mask'] for j in self.jobs if j.get('post_mask')}
+                )
             return {'ok': True, 'removed': len(removed)}
 
     def retry(self, job_id):
@@ -279,6 +284,7 @@ class JobQueueMixin:
                     'post_options',
                     'post_prefix',
                     'post_source',
+                    'post_mask',
                 )
             }
             job.update(id=uuid.uuid4().hex, status='queued', created_at=now())

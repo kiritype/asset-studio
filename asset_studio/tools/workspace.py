@@ -7,6 +7,8 @@ path in ``outputs/`` and never copied. The list lives in ``data/state/tools.json
 import hashlib
 import io
 import json
+import re
+import shutil
 import threading
 import uuid
 import zipfile
@@ -338,6 +340,37 @@ class ToolWorkspace:
             return None
         with Image.open(path) as mask:
             return mask.convert('L')
+
+    def freeze_mask(self, item_id, kind):
+        """Copy the current mask for one job, so editing it later leaves the job alone.
+
+        Returns the copy's token (``job_mask`` reads it back).
+        """
+        token = uuid.uuid4().hex
+        path = self.job_mask_path(token)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(self.mask_path(item_id, kind), path)
+        return token
+
+    def job_mask_path(self, token):
+        if not isinstance(token, str) or not re.fullmatch(r'[0-9a-f]{32}', token):
+            raise ValueError(Msg('server.workspace.unknown_mask_type', 'Unknown mask type.'))
+        return self.root / 'data' / 'tools' / 'masks' / 'jobs' / f'{token}.png'
+
+    def job_mask(self, token):
+        """The mask copied for a job, or None."""
+        path = self.job_mask_path(token)
+        if not path.is_file():
+            return None
+        with Image.open(path) as mask:
+            return mask.convert('L')
+
+    def prune_job_masks(self, keep):
+        """Delete the job mask copies whose token is not in ``keep``."""
+        folder = self.root / 'data' / 'tools' / 'masks' / 'jobs'
+        for path in folder.glob('*.png') if folder.is_dir() else ():
+            if path.stem not in keep:
+                path.unlink(missing_ok=True)
 
     def set_mask(self, item_id, mask, source, kind='censor'):
         """Store a mask (PIL image or PNG bytes) for an item; its size must match the image."""

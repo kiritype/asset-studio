@@ -452,8 +452,21 @@ class PostprocessMixin:
                         'Too many queued jobs. Let the queue run first.',
                     )
                 )
-            self.jobs.extend(prepared)
-            self.persist()
+            # Each inpaint job keeps the mask as it is now; generating and pasting back
+            # both use this copy even if the mask is edited while the job waits or runs.
+            previous, frozen = self.jobs[:], []
+            try:
+                for job in prepared:
+                    if op == 'inpaint':
+                        job['post_mask'] = self.tools.freeze_mask(job['tool_item'], 'inpaint')
+                        frozen.append(job['post_mask'])
+                self.jobs.extend(prepared)
+                self.persist()
+            except Exception:
+                self.jobs = previous
+                for token in frozen:
+                    self.tools.job_mask_path(token).unlink(missing_ok=True)
+                raise
         public = [{k: v for k, v in j.items() if k != 'snapshot'} for j in prepared]
         return {'ok': True, 'jobs': public}
 
@@ -471,7 +484,7 @@ class PostprocessMixin:
             )
         if job['post_op'] == 'inpaint':
             options = job['post_options']
-            mask = self._inpaint_mask(item, options)
+            mask = self._inpaint_mask(item, job)
             job.pop('post_crop', None)
             if options.get('area') == 'crop':
                 box = mask.getbbox()
@@ -497,8 +510,14 @@ class PostprocessMixin:
             return inpaint_graph(reference, mask_ref, options, job['post_source'])
         return graph(job['post_op'], reference, job['post_options'], job['post_prefix'])
 
-    def _inpaint_mask(self, item, options):
-        mask = self.tools.mask(item['id'], 'inpaint')
+    def _inpaint_mask(self, item, job):
+        """The redraw mask of a job: the copy taken when it was queued (older saved jobs
+        have none and use the image's current mask)."""
+        options = job['post_options']
+        if job.get('post_mask'):
+            mask = self.tools.job_mask(job['post_mask'])
+        else:
+            mask = self.tools.mask(item['id'], 'inpaint')
         if mask is None:
             raise ValueError(
                 Msg(
@@ -530,7 +549,7 @@ class PostprocessMixin:
         if job['post_op'] == 'inpaint' and job.get('post_crop'):
             # Shrink the redrawn region back and blend it in with the soft-edged mask.
             region = tuple(job['post_crop']['region'])
-            mask = self._inpaint_mask(item, job['post_options']).crop(region)
+            mask = self._inpaint_mask(item, job).crop(region)
             with Image.open(self.tools.file(item)) as source:
                 full = ImageOps.exif_transpose(source).convert('RGB')
             patch = image.convert('RGB').resize(mask.size, Image.LANCZOS)
