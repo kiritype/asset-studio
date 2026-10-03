@@ -213,6 +213,21 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(saved['jobs']), 3)
         self.assertEqual(self.app.remove_finished()['removed'], 0)
 
+    def test_job_list_keeps_every_unfinished_job_and_only_recent_finished_ones(self):
+        def job(i, status):
+            return {'id': f'j{i}', 'status': status, 'snapshot': {}, 'workflow': {}}
+
+        self.app.jobs = (
+            [job(i, 'completed') for i in range(1100)]
+            + [job(1100, 'running')]
+            + [job(i, 'queued') for i in range(1101, 2101)]
+        )
+        jobs = self.app.public_jobs()['jobs']
+        self.assertEqual(len(jobs), 2101 - 100)
+        self.assertEqual(jobs[0]['id'], 'j100')  # The oldest finished ones are left out.
+        self.assertEqual(jobs[1000], {'id': 'j1100', 'status': 'running'})
+        self.assertEqual(jobs[-1]['id'], 'j2100')
+
     def test_remove_single_rejects_active_and_keeps_other_finished(self):
         self.app.enqueue({**self.request, 'count': 3})
         self.app.jobs[0]['status'] = 'cancelled'
