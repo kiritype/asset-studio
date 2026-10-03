@@ -1,4 +1,4 @@
-// Lab: one prompt tried with several seeds or one changing setting, compared side by side.
+// Lab: generate one image or compare one prompt across seeds and changing values.
 // Results are not assets; they are saved under outputs/_lab/<date>/ with full metadata.
 
 import {renderGenerationSettings} from '../core/generation_settings.js';
@@ -18,6 +18,7 @@ const SWEEPS = [
   ['scheduler', t('common.scheduler')],
   ['clip_skip', 'CLIP skip'],
   ['lora_strength', t('lab.lora_strength')],
+  ['artist', t('lab.artist')],
 ];
 const SWEEP_HINTS = {
   cfg: t('lab.e_g_3_4_5_6'),
@@ -26,8 +27,10 @@ const SWEEP_HINTS = {
   scheduler: t('lab.comma_separated_empty_means_the_whole'),
   clip_skip: t('lab.e_g_1_2'),
   lora_strength: t('lab.e_g_0_4_0_7'),
+  artist: t('lab.one_candidate_per_line_tags_within'),
 };
 const DONE = ['completed', 'failed', 'cancelled', 'interrupted'];
+const MAX_CANDIDATES = 12;
 
 const el = (tag, cls = '', text) => {
   const n = document.createElement(tag);
@@ -77,7 +80,13 @@ export function createLab(ctx) {
   const state = {
     comfy: null,
     presets: [],
-    draft: {positive: '', negative: '', settings: {}, count: 4, sweep: {key: '', values: ''}},
+    draft: {
+      positive: '',
+      negative: '',
+      settings: {},
+      count: 4,
+      sweep: {key: '', values: '', no_artist: false},
+    },
     source: null,
     jobs: [],
     group: '',
@@ -87,6 +96,7 @@ export function createLab(ctx) {
     slider: 50,
     timer: 0,
     busy: false,
+    tab: 'single',
   };
 
   const form = el('div', 'lab-form');
@@ -106,9 +116,11 @@ export function createLab(ctx) {
   const positive = el('textarea');
   positive.rows = 7;
   positive.spellcheck = false;
+  positive.setAttribute('aria-label', t('common.positive_prompt'));
   const negative = el('textarea');
   negative.rows = 4;
   negative.spellcheck = false;
+  negative.setAttribute('aria-label', t('common.negative_prompt'));
   const checkBox = el('div', 'lab-tagcheck');
   const settingsBox = el('div', 'lab-settings');
   const presetSelect = el('select');
@@ -122,11 +134,36 @@ export function createLab(ctx) {
     option.value = key;
     sweepKey.append(option);
   }
-  const sweepValues = el('input');
+  const sweepValues = el('textarea');
+  sweepValues.rows = 4;
+  sweepValues.spellcheck = false;
   const sweepLora = el('select');
+  const noArtist = el('input');
+  noArtist.type = 'checkbox';
   const sweepRow = el('div', 'lab-row');
+  const sweepLoraField = field('LoRA', sweepLora);
+  const sweepValuesField = field(t('lab.values'), sweepValues);
+  const noArtistField = field(
+    t('lab.include_no_artist_baseline'),
+    noArtist,
+    t('lab.shared_prompt_artists_kept'),
+  );
+  const countField = field(t('lab.seeds'), countInput, t('lab.a_fixed_seed_counts_up_by'));
+  const modeHeading = el('h2', 'lab-mode-heading');
   const totalLine = el('p', 'lab-total');
   const runButton = btn(t('common.generate'), () => run(), 'lab-primary');
+  const modeRow = el('div', 'lab-tabs');
+  const singleTab = btn(t('lab.single'), () => {
+    state.tab = 'single';
+    renderTab();
+  });
+  const compareTab = btn(t('lab.compare'), () => {
+    state.tab = 'compare';
+    renderTab();
+  });
+  singleTab.setAttribute('aria-pressed', 'true');
+  compareTab.setAttribute('aria-pressed', 'false');
+  modeRow.append(singleTab, compareTab);
 
   positive.value = '';
   // Replace one tag everywhere it appears, keeping the spacing around it.
@@ -150,6 +187,14 @@ export function createLab(ctx) {
   function sweepList() {
     const {key, values} = state.draft.sweep;
     if (!key) return [];
+    if (key === 'artist') {
+      const candidates = String(values || '')
+        .split(/\r?\n/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (state.draft.sweep.no_artist) candidates.push('');
+      return candidates;
+    }
     const parts = String(values || '')
       .split(',')
       .map((v) => v.trim())
@@ -159,27 +204,43 @@ export function createLab(ctx) {
     return parts;
   }
   function totals() {
-    const variants = state.draft.sweep.key ? sweepList().length : 1;
-    return {variants, jobs: (Number(state.draft.count) || 0) * variants};
+    const comparing = state.tab === 'compare';
+    const variants = comparing && state.draft.sweep.key ? sweepList().length : 1;
+    const seeds = comparing ? Number(state.draft.count) || 0 : 1;
+    return {variants, jobs: seeds * variants, seeds};
   }
   function renderTotal() {
     const total = totals();
-    totalLine.textContent = state.draft.sweep.key
-      ? t('lab.seeds_values_images', [state.draft.count, total.variants, total.jobs])
-      : t('lab.seeds_images', [state.draft.count, total.jobs]);
+    const sweepKey = state.tab === 'compare' ? state.draft.sweep.key : '';
+    totalLine.textContent = sweepKey
+      ? t('lab.seeds_values_images', [total.seeds, total.variants, total.jobs])
+      : t('lab.seeds_images', [total.seeds, total.jobs]);
     runButton.textContent = t('lab.generate', [total.jobs]);
-    const sweepBad = state.draft.sweep.key && total.variants < 2;
+    const sweepBad = sweepKey && total.variants < 2;
+    const valuesTooMany = sweepKey && total.variants > MAX_CANDIDATES;
+    const artistValues = sweepKey === 'artist' ? sweepList() : [];
+    const duplicateArtists =
+      sweepKey === 'artist' && new Set(artistValues).size !== artistValues.length;
     runButton.disabled =
-      state.busy || !!ctx.preview || total.jobs < 1 || total.jobs > MAX_JOBS || sweepBad;
+      state.busy ||
+      !!ctx.preview ||
+      total.jobs < 1 ||
+      total.jobs > MAX_JOBS ||
+      sweepBad ||
+      valuesTooMany ||
+      duplicateArtists;
     if (total.jobs > MAX_JOBS) totalLine.textContent += t('lab.up_to', [MAX_JOBS]);
     if (sweepBad) totalLine.textContent += t('lab.enter_at_least_two_values_to');
+    if (valuesTooMany) totalLine.textContent += t('lab.use_at_most_values', [MAX_CANDIDATES]);
+    if (duplicateArtists) totalLine.textContent += t('lab.remove_duplicate_artist_values');
   }
   function renderSweep() {
     const {key} = state.draft.sweep;
     sweepKey.value = key;
     sweepValues.value = state.draft.sweep.values || '';
     sweepValues.placeholder = SWEEP_HINTS[key] || '';
-    sweepValues.hidden = !key;
+    sweepValuesField.hidden = !key;
+    sweepValues.rows = key === 'artist' ? 6 : 2;
     sweepLora.replaceChildren();
     arr(state.draft.settings.loras).forEach((lora, index) => {
       const option = el('option', '', lora.name || `LoRA ${index + 1}`);
@@ -187,7 +248,21 @@ export function createLab(ctx) {
       sweepLora.append(option);
     });
     sweepLora.value = String(state.draft.sweep.lora_index || 0);
-    sweepLora.hidden = key !== 'lora_strength';
+    sweepLoraField.hidden = key !== 'lora_strength';
+    noArtist.checked = !!state.draft.sweep.no_artist;
+    noArtistField.hidden = key !== 'artist';
+    renderTotal();
+  }
+  function renderTab() {
+    const comparing = state.tab === 'compare';
+    countField.hidden = !comparing;
+    sweepRow.hidden = !comparing;
+    modeHeading.textContent = comparing ? t('lab.result') : t('lab.single');
+    for (const [key, tab] of [
+      ['single', singleTab],
+      ['compare', compareTab],
+    ])
+      tab.setAttribute('aria-pressed', String(state.tab === key));
     renderTotal();
   }
   function renderSettings() {
@@ -273,11 +348,12 @@ export function createLab(ctx) {
     presetRow.append(btn(t('lab.save_current_settings_as_a_preset'), savePreset, 'lab-muted'));
     sweepRow.append(
       field(t('lab.value_to_vary'), sweepKey),
-      field('LoRA', sweepLora),
-      field(t('lab.values'), sweepValues),
+      sweepLoraField,
+      sweepValuesField,
+      noArtistField,
     );
-    const compareHead = el('h2', '', t('lab.result'));
     form.replaceChildren(
+      modeRow,
       sourceLine,
       promptHead,
       withTagComplete(positive, ctx.api, (value) => {
@@ -293,8 +369,8 @@ export function createLab(ctx) {
       settingsHead,
       settingsBox,
       presetRow,
-      compareHead,
-      field(t('lab.seeds'), countInput, t('lab.a_fixed_seed_counts_up_by')),
+      modeHeading,
+      countField,
       sweepRow,
       totalLine,
       runButton,
@@ -306,7 +382,7 @@ export function createLab(ctx) {
     renderTotal();
   });
   sweepKey.addEventListener('change', () => {
-    state.draft.sweep = {key: sweepKey.value, values: '', lora_index: 0};
+    state.draft.sweep = {key: sweepKey.value, values: '', lora_index: 0, no_artist: false};
     saveDraft();
     renderSweep();
   });
@@ -318,6 +394,11 @@ export function createLab(ctx) {
   sweepLora.addEventListener('change', () => {
     state.draft.sweep.lora_index = Number(sweepLora.value);
     saveDraft();
+  });
+  noArtist.addEventListener('change', () => {
+    state.draft.sweep.no_artist = noArtist.checked;
+    saveDraft();
+    renderTotal();
   });
 
   function fillForm() {
@@ -336,10 +417,11 @@ export function createLab(ctx) {
     sourceLine.hidden = !from;
     renderSettings();
     renderSweep();
+    renderTab();
   }
 
   /** Queue the form; ``once`` sends a single image with the form's seed setting. */
-  async function run(once = false) {
+  async function run(once = state.tab === 'single') {
     if (state.busy) return;
     const sweep =
       !once && state.draft.sweep.key
@@ -538,8 +620,14 @@ export function createLab(ctx) {
 
     const strip = el('div', 'lab-strip');
     const columns = current ? Math.max(...current.jobs.map((j) => j.lab_column || 0)) + 1 : 1;
-    strip.style.gridTemplateColumns = `repeat(${columns > 1 ? columns : 'auto-fill'}, minmax(110px, ${columns > 1 ? '1fr' : '140px'}))`;
-    for (const job of current?.jobs || []) {
+    const jobs = current?.jobs || [];
+    const candidateGrid = columns > 1;
+    strip.classList.toggle('lab-candidate-grid', candidateGrid);
+    strip.style.gridTemplateColumns = candidateGrid
+      ? `minmax(56px, 0.45fr) repeat(${columns}, minmax(100px, 1fr))`
+      : 'repeat(auto-fill, minmax(110px, 140px))';
+    const renderCard = (job) => {
+      if (!job) return el('div', 'lab-grid-empty');
       const card = el('div', 'lab-thumb');
       if (state.toBe?.job?.id === job.id) card.classList.add('to-be');
       if (state.asIs?.job?.id === job.id) card.classList.add('as-is');
@@ -579,7 +667,29 @@ export function createLab(ctx) {
         );
       card.title = tr(job.title) || '';
       card.append(caption);
-      strip.append(card);
+      return card;
+    };
+    if (candidateGrid) {
+      strip.append(el('div', 'lab-grid-corner', t('common.seed')));
+      for (let column = 0; column < columns; column++) {
+        const candidate = jobs.find((job) => (job.lab_column || 0) === column);
+        const label = candidate?.lab_variant
+          ? tr(candidate.lab_variant)
+          : t('lab.no_artist_baseline');
+        strip.append(el('div', 'lab-candidate-heading', `${t('lab.candidate')}: ${label}`));
+      }
+      const rows = new Map();
+      for (const job of jobs) {
+        const key = String(job.seed);
+        if (!rows.has(key)) rows.set(key, new Map());
+        rows.get(key).set(job.lab_column || 0, job);
+      }
+      for (const [seed, row] of rows) {
+        strip.append(el('div', 'lab-seed-heading', t('lab.seed', [seed])));
+        for (let column = 0; column < columns; column++) strip.append(renderCard(row.get(column)));
+      }
+    } else {
+      for (const job of jobs) strip.append(renderCard(job));
     }
     const hint = el('p', 'lab-caption', t('lab.click_a_thumbnail_to_compare_it'));
     view.replaceChildren(top, stage, tools, strip, hint);
@@ -641,7 +751,6 @@ export function createLab(ctx) {
       state.toBe = null;
     }
     saveDraft();
-    buildForm();
     fillForm();
     await Promise.all([loadPresets(), loadJobs()]);
     if (handoff?.run) await run(true);
@@ -656,5 +765,6 @@ export function createLab(ctx) {
     clearInterval(state.timer);
   }
 
+  buildForm();
   return {element: root, enter, leave};
 }

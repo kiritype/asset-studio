@@ -1,7 +1,7 @@
 # Image tools
 
-The **Image tools** collect the work you do one image at a time. Source images are never changed;
-results are always saved as new files.
+The **Image tools** collect the work you do one image at a time. Source images are never changed.
+Edits are saved as new files, while prompt-format results can be copied.
 
 ## Adding images
 
@@ -13,18 +13,41 @@ results are always saved as new files.
 
 Click an image in the list on the left to see it with how it was made. The Asset Studio record,
 the ComfyUI graph, A1111 `parameters` and EXIF are read to show the prompt and settings, and
-**Open in Lab** hands them to the lab.
+**Open in Generate & compare** hands them to that page.
 
 ![Reading how an image was made](/shots/en/31-tools-analysis.webp)
 
 Ticked images can be downloaded at once with **Download ZIP**.
+
+## Prompt format
+
+The **Prompt format** tab converts prompt text without generating an image. Enter positive and
+negative prompts directly, or choose prompt metadata from gallery images. When several images are
+selected, each image's prompt is converted separately.
+
+The available formats are NovelAI V5, Anima and SDXL·Illustrious (ComfyUI). Explicit artist forms
+such as `@name` or `artist:name` are converted to artist tags. A bare name is treated as an artist
+only when it appears in the optional artist list you provide. Weight syntax is converted
+approximately for the target format; natural-language text is left as written. For example,
+NovelAI `1.2::tag::` becomes ComfyUI `(tag:1.2)`, while simple ComfyUI `(tag:1.2)` becomes
+NovelAI numeric weighting. Balanced `{tag}` and `[tag]` groups become explicit ComfyUI weights.
+Weight numbers have different effects across models, so adjust converted prompts by hand. Unknown
+ordinary tags and natural-language text stay as written without a warning. Unsupported complex
+syntax (including nested forms it cannot convert), malformed syntax and nonpositive weights are
+preserved with a warning. The converter
+does not extract artist names from natural language or change quality tags. See [NovelAI's weight
+syntax](https://docs.novelai.net/en/image/strengthening-weakening/)
+and [Anima prompting](https://huggingface.co/circlestone-labs/Anima#prompting).
+
+Copy the result or send it to Generate & compare (`/lab`). This tab does not generate images with
+NovelAI or connect to an external AI service. The original image file is unchanged.
 
 ## Where results go
 
 - Results of work images (images in a work / character / outfit folder) are saved **next to the
   source as new candidates**. Inpainting `002.png`, for example, creates `002_inpaint.png`; pass it
   in the gallery to make it the adopted image of that expression.
-- Results of uploaded images and lab images go to `outputs/_tools/<date>/`.
+- Results of uploaded images and Generate & compare images go to `outputs/_tools/<date>/`.
 
 ## Tagging
 
@@ -38,7 +61,7 @@ The WD14 tagger reads tags from the image and compares them with the image's pro
 - **Not seen in the image**: in the prompt but not read from the image. Either it was not drawn or
   the tagger does not know the phrase.
 
-**Copy tags** and **Open tags in lab** are available. Tags listed under **Excluded tags** on the
+**Copy tags** and **Open tags in Generate & compare** are available. Tags listed under **Excluded tags** on the
 right are left out of the view, copies and exports. **Export tags** as TXT packs one caption file
 per image, named like the image ZIP (for LoRA training).
 
@@ -95,14 +118,14 @@ chosen images with a mask" button; each image uses its own saved mask.
 
 Inpaint, background removal and censor share one editor.
 
-| Action | How |
-|---|---|
-| Brush / eraser | **B** / **E** |
-| Brush size | **[** / **]** or the size slider |
-| Undo / redo | **Ctrl+Z** / **Ctrl+Y** |
-| Zoom | Mouse wheel |
-| Pan | Drag with **Space** held, or with the middle button |
-| Fit / 100% | **0** / **1** |
+| Action         | How                                                 |
+| -------------- | --------------------------------------------------- |
+| Brush / eraser | **B** / **E**                                       |
+| Brush size     | **[** / **]** or the size slider                    |
+| Undo / redo    | **Ctrl+Z** / **Ctrl+Y**                             |
+| Zoom           | Mouse wheel                                         |
+| Pan            | Drag with **Space** held, or with the middle button |
+| Fit / 100%     | **0** / **1**                                       |
 
 **Show mask** and its opacity slider hide or fade the mask; **Background** picks what shows
 behind transparent areas (checker, white or black).

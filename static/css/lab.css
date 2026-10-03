@@ -65,6 +65,33 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 13px;
 }
+#app-lab input[type='checkbox'] {
+  width: auto;
+  justify-self: start;
+}
+#app-lab .lab-tabs {
+  display: flex;
+  gap: 0;
+  margin: 0.4rem 0 0.8rem;
+}
+#app-lab .lab-tabs button {
+  padding: 6px 14px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-panel);
+  color: inherit;
+}
+#app-lab .lab-tabs button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+#app-lab .lab-tabs button:last-child {
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+}
+#app-lab .lab-tabs button[aria-pressed='true'] {
+  border-color: var(--lab-accent);
+  color: var(--lab-accent);
+  font-weight: 600;
+}
 #app-lab .lab-row {
   display: flex;
   flex-wrap: wrap;
@@ -200,6 +227,38 @@
   display: grid;
   gap: 0.5rem;
   margin-top: 0.8rem;
+}
+#app-lab .lab-candidate-grid {
+  overflow-x: auto;
+  align-items: stretch;
+  padding-bottom: 0.4rem;
+}
+#app-lab .lab-grid-corner,
+#app-lab .lab-candidate-heading,
+#app-lab .lab-seed-heading {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  color: var(--lab-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+#app-lab .lab-candidate-heading {
+  min-width: 100px;
+  justify-content: center;
+  text-align: center;
+  border-bottom: 1px solid var(--lab-border);
+  color: var(--lab-text);
+}
+#app-lab .lab-seed-heading {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+#app-lab .lab-grid-empty {
+  min-width: 100px;
+  min-height: 120px;
+  border: 1px dashed var(--lab-border);
+  border-radius: 8px;
 }
 #app-lab .lab-thumb {
   border: 2px solid transparent;

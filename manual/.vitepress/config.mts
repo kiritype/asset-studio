@@ -6,9 +6,9 @@ const enGuide = [
   {text: 'Prompt library', link: '/guide/library'},
   {text: 'Generating images', link: '/guide/generate'},
   {text: 'Gallery and review', link: '/guide/gallery'},
-  {text: 'LoRA training', link: '/guide/lora'},
   {text: 'Image tools', link: '/guide/tools'},
-  {text: 'Lab', link: '/guide/lab'},
+  {text: 'LoRA training', link: '/guide/lora'},
+  {text: 'Generate & compare', link: '/guide/lab'},
   {text: 'Settings', link: '/guide/settings'},
   {text: 'Troubleshooting', link: '/guide/troubleshooting'},
 ];
@@ -17,9 +17,9 @@ const koGuide = [
   {text: '프롬프트 라이브러리', link: '/ko/guide/library'},
   {text: '이미지 생성', link: '/ko/guide/generate'},
   {text: '갤러리와 검수', link: '/ko/guide/gallery'},
-  {text: 'LoRA 학습', link: '/ko/guide/lora'},
   {text: '이미지 도구', link: '/ko/guide/tools'},
-  {text: '실험실', link: '/ko/guide/lab'},
+  {text: 'LoRA 학습', link: '/ko/guide/lora'},
+  {text: '생성·비교', link: '/ko/guide/lab'},
   {text: '설정', link: '/ko/guide/settings'},
   {text: '문제 해결', link: '/ko/guide/troubleshooting'},
 ];

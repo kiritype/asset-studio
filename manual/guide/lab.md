@@ -1,49 +1,50 @@
-# Lab
+# Generate & compare
 
-The **Lab** is for trying one prompt freely, outside the library. Vary the seed, or change one
-setting at a time, and compare the results side by side. Results are saved in
-`outputs/_lab/<date>/` and also appear in the gallery.
+**Generate & compare** is where you try prompts outside the library and compare results. The page
+keeps its existing `/lab` address. Results are saved in `outputs/_lab/<date>/` and appear in the
+gallery.
 
-![The lab](/shots/en/10-lab-empty.webp)
+The positive and negative prompt fields are shared by both tabs. Enter them directly; tag
+autocomplete and the tag checks point out tags that Danbooru does not know. Generation settings
+match Jobs, and you can load or save a generation preset.
 
-## Prompt and generation settings
+## Single generation
 
-- **Prompt** / **Negative prompt**: write them yourself, with tag autocomplete. **Check positive
-  tags** / **Check negative tags** point out tags Danbooru does not know.
-- **Generation settings**: the same settings as in Jobs. **Load a preset** loads a saved
-  generation preset; **Save current settings as a preset** creates one.
+The **Single generation** tab makes one image from the prompt and generation settings. Values or
+artist candidates entered on the Comparison tab do not affect it.
 
-You can also hand things over from elsewhere:
+## Comparison
 
-- **Open in Lab** in the Jobs preview
-- **Open in Lab** in the gallery's image view
-- **Open in Lab** and **Open tags in lab** in the image tools
+The **Comparison** tab keeps the same conditions while it changes only the seed, or changes one
+setting at a time.
 
-The source is shown at the top when something was handed over.
+- **Seeds**: generate the same prompt with several seeds to see how stable it is.
+- **Settings**: compare values for one setting.
 
-## Comparing seeds
+| Setting             | Example values                                                    |
+| ------------------- | ----------------------------------------------------------------- |
+| CFG                 | 3, 4.5, 6                                                         |
+| Steps               | 20, 28, 36                                                        |
+| Sampler · scheduler | leave empty for the whole list                                    |
+| CLIP skip (SDXL)    | 1, 2                                                              |
+| LoRA strength       | 0.4, 0.7, 1.0                                                     |
+| Artist              | one candidate per line; put a mix of artists together on one line |
 
-Generates as many images as **Seeds**, each with its own seed. Shows how stable a prompt is.
+Enter one artist candidate per line. Turn on **Include a no-artist baseline** to add a result with
+no artist tag. The common prompt stays in every result, and existing artist tags are not removed automatically. Leave the
+artists being compared out of the common prompt so each candidate replaces the previous one. All
+candidates in one row use the same seed.
 
-## Comparing values
+You can compare up to 12 candidates and 16 seeds, with a maximum of 48 images in one run.
 
-Pick one setting under **Value to vary** and list the values under **Values**, separated by commas.
-
-| Setting | Example values |
-|---|---|
-| CFG | 3, 4.5, 6 |
-| Steps | 20, 28, 36 |
-| Sampler · scheduler | leave empty for the whole list |
-| CLIP skip (SDXL) | 1, 2 |
-| LoRA strength | 0.4, 0.7, 1.0 |
-
-You get seeds × values images (shown as, for example, "2 seeds × 3 values = 6 images").
+You can open a job preview or a gallery image in Generate & compare. The image tools can also send
+the current prompt or analyzed tags. The source is shown when a prompt comes from another screen.
 
 ## Comparing results
 
 Choose two results as **Reference** and **Result**.
 
-- **Side by side**: the two next to each other.
-- **Slider**: one over the other; drag the edge to see the difference.
+- **Side by side**: place the two images next to each other.
+- **Slider**: layer one image over the other and drag the edge to see the difference.
 - **Swap reference and result** and **Load the result's settings** (brings the settings of the one
   you like back into the form) are available.

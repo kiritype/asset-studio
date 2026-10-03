@@ -236,9 +236,23 @@ export function createGallery(ctx) {
       const paths = [...state.chosen.values()].map((item) => item.path);
       const result = await ctx.api('/api/tools/gallery', {paths});
       ctx.notify(t('gallery.added_images_to_the_image_tools', [result.added.length]));
+      sessionStorage.setItem('asset-studio-tools-gallery-handoff', JSON.stringify({paths}));
       ctx.navigate('/tools');
     } catch (error) {
       setMessage(error.message || String(error), true);
+    }
+  });
+  const toPromptFormat = actionButton(t('prompt_converter.send_to_prompt_format'), () => {
+    const paths = [...state.chosen.values()].map((item) => item.path).filter(Boolean);
+    if (!paths.length) return;
+    try {
+      sessionStorage.setItem(
+        'asset-studio-prompt-format-handoff',
+        JSON.stringify({type: 'prompt-format', paths}),
+      );
+      ctx.navigate('/tools?tab=prompt');
+    } catch (error) {
+      setMessage(error.message || t('prompt_converter.handoff_failed'), true);
     }
   });
   const exportButton = actionButton(t('gallery.export_current_scope_as_zip'), () =>
@@ -267,6 +281,7 @@ export function createGallery(ctx) {
     reviewReset,
     regenerate,
     toTools,
+    toPromptFormat,
     exportButton,
     exportPartial,
     selectionMessage,
@@ -327,7 +342,44 @@ export function createGallery(ctx) {
     dialog.close();
     ctx.navigate(`/lab?image=${encodeURIComponent(item.relative_path)}`);
   });
-  detailReview.append(detailBadges, detailPass, detailFail, detailReset, detailRegen, detailLab);
+  const detailTools = actionButton(t('gallery.send_to_image_tools'), async () => {
+    const item = currentItem();
+    if (!item) return;
+    try {
+      const path = item.relative_path || item.path;
+      const result = await ctx.api('/api/tools/gallery', {paths: [path]});
+      ctx.notify(t('gallery.added_images_to_the_image_tools', [result.added.length]));
+      sessionStorage.setItem('asset-studio-tools-gallery-handoff', JSON.stringify({paths: [path]}));
+      dialog.close();
+      ctx.navigate('/tools');
+    } catch (error) {
+      setMessage(error.message || String(error), true);
+    }
+  });
+  const detailPrompt = actionButton(t('prompt_converter.open_in_prompt_format'), () => {
+    const item = currentItem();
+    if (!item) return;
+    try {
+      sessionStorage.setItem(
+        'asset-studio-prompt-format-handoff',
+        JSON.stringify({type: 'prompt-format', paths: [item.relative_path || item.path]}),
+      );
+      dialog.close();
+      ctx.navigate('/tools?tab=prompt');
+    } catch (error) {
+      setMessage(error.message || t('prompt_converter.handoff_failed'), true);
+    }
+  });
+  detailReview.append(
+    detailBadges,
+    detailPass,
+    detailFail,
+    detailReset,
+    detailRegen,
+    detailLab,
+    detailTools,
+    detailPrompt,
+  );
   const detailsBody = node('div', 'g-details-body');
   details.append(detailsHead, detailReview, detailsBody);
   lightbox.append(viewer, details);
@@ -579,8 +631,10 @@ export function createGallery(ctx) {
     selectionCount.textContent = t('common.selected', [state.chosen.size.toLocaleString(locale)]);
     for (const button of [reviewPass, reviewFail, reviewReset, regenerate, toTools])
       button.disabled = !has || state.actionBusy || ctx.preview;
-    for (const button of [detailPass, detailFail, detailReset, detailRegen])
+    toPromptFormat.disabled = !has || state.actionBusy;
+    for (const button of [detailPass, detailFail, detailReset, detailRegen, detailTools])
       button.disabled = !currentItem() || state.actionBusy || ctx.preview;
+    detailPrompt.disabled = !currentItem() || state.actionBusy;
     clearSelection.disabled = !has || state.actionBusy;
   }
   const ROUND_STATUS = {

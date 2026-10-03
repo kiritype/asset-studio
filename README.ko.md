@@ -18,14 +18,18 @@ Asset Studio는 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)로 일관�
   SDXL/Illustrious 그래프를 모두 지원합니다.
 - **갤러리**: 이미지를 통과/실패로 검수하고, 작품·캐릭터·의상·감정·모델로 거르며, 새 시드로 다시
   생성하고, 통과한 이미지를 ZIP으로 내보냅니다.
-- **실험실**: 한 프롬프트를 여러 시드나 한 가지 설정값(CFG, 스텝, 샘플러, 스케줄러, CLIP skip,
-  LoRA 강도)으로 생성해 나란히 또는 슬라이더로 비교합니다.
 - **이미지 도구**: 이미지를 올리거나 갤러리에서 가져와 제작 정보(Asset Studio 기록, ComfyUI 그래프,
   A1111 parameters, EXIF)를 읽고, WD14 태그 분석, 배경 투명화, 업스케일, 얼굴·손 다시 그리기
-  (디테일러), 직접 칠할 수 있는 마스크로 가림 처리, WebP 변환을 합니다.
+  (디테일러), 직접 칠할 수 있는 마스크로 가림 처리, WebP 변환과 NovelAI V5·Anima·SDXL/Illustrious
+  (ComfyUI) 프롬프트 형식 변환을 합니다.
 - **LoRA**: 통과한 이미지로 데이터셋을 만들고 캡션을 고친 뒤
   [anima_lora](https://github.com/sorryhyun/anima_lora)로 학습하고, 결과를 등록해 그 캐릭터를 생성할
   때 자동으로 적용합니다.
+- **생성·비교**: 단일 생성 탭은 한 장을 만들고, **비교 생성** 탭은 시드, 설정 하나 또는 작가 후보만 바꿉니다.
+  작가 후보는 한 줄에 하나씩 적고 한 줄에 여러 작가를 섞을 수 있습니다. **작가가 없는 기준 결과 포함**을
+  켜면 작가 태그가 없는 기준도 생성합니다. 공통 프롬프트는 후보마다 유지되며 기존 작가 태그를 자동으로 지우지 않으므로 비교할 작가는 공통
+  프롬프트에서 빼세요. 한 행의 후보는 같은 시드를 씁니다. 후보 최대 12개, 시드 최대 16개, 한 번에 최대
+  48장까지 생성합니다.
 
 이미지는 ComfyUI의 `prompt`와 `workflow`를 담은 PNG로 저장되므로, ComfyUI에서 결과 이미지를
 워크플로로 열 수 있습니다.
@@ -62,6 +66,7 @@ Asset Studio는 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)로 일관�
    ```
 
    이 파일이 없으면 `PATH`의 `pythonw`를 씁니다.
+
 4. 선택 기능에는 ComfyUI 커스텀 노드와 모델이 필요합니다. `tools/install_comfy_nodes.py`가 커스텀
    노드를 [확인한 버전](#확인한-버전)으로 설치하고 Asset Studio 노드 묶음을 ComfyUI에 연결합니다. ComfyUI의
    Python으로 실행하세요(포터블은 `python_embeded\python.exe`). 그냥 `python`이라고 치면 Microsoft
@@ -115,10 +120,21 @@ Asset Studio는 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)로 일관�
 
 ### 이미지 도구 한눈에 보기
 
+- **프롬프트 형식**: 긍정·제외 프롬프트를 직접 입력하거나 갤러리 이미지마다 제작 정보의 프롬프트를 따로
+  변환합니다. `@이름`, `artist:이름`은 작가임을 명시하며, 접두사가 없는 이름은 선택 사항인 사용자 작가
+  목록에 있을 때만 작가 태그로 처리합니다. 예를 들어 NovelAI의 `1.2::tag::`는 ComfyUI의 `(tag:1.2)`로,
+  ComfyUI의 간단한 `(tag:1.2)`는 NovelAI 숫자 가중치로 바뀝니다. `{tag}`와 `[tag]`는 ComfyUI 명시적
+  가중치로 바뀝니다. 수치 가중치는 모델에 따라 효과가 달라 변환 뒤 직접 조정해야 합니다. 알 수 없는 일반 태그와
+  자연어는 경고 없이 그대로 둡니다. 변환기가 처리하지 못하는 복잡한 문법(일부 중첩 포함), 잘못된 문법,
+  0 이하 가중치는 경고와 함께 보존합니다. 자연어에서 작가 이름을 추출하거나
+  품질 태그를 자동으로 바꾸지 않습니다. [NovelAI 가중치 문법](https://docs.novelai.net/en/image/strengthening-weakening/),
+  [Anima 프롬프트 안내](https://huggingface.co/circlestone-labs/Anima#prompting)도 참고하세요. 결과는 복사하거나
+  생성·비교(`/lab`)로 보낼 수 있습니다. NovelAI 이미지 생성이나 외부 AI 서비스 연결은 하지 않으며 원본 이미지는
+  바뀌지 않습니다.
 - **WebP 변환**: 품질, 무손실, 크기 조절. "메타데이터 유지"는 기본으로 꺼져 있어 공유하는 파일에
   프롬프트와 워크플로가 남지 않습니다.
 - **태그 분석**: WD14 태그를 이미지의 프롬프트와 비교합니다(일치, 그림에서만 읽힘, 그림에서 안 읽힘).
-  제외할 태그를 정해 두고, 태그를 복사하거나 실험실로 보내거나, 고른 이미지의 태그를 TXT(LoRA 캡션)나
+  제외할 태그를 정해 두고, 태그를 복사하거나 생성·비교로 보내거나, 고른 이미지의 태그를 TXT(LoRA 캡션)나
   JSON으로 내보낼 수 있습니다. 고른 이미지는 ZIP으로 한 번에 내려받을 수 있습니다.
 - **후처리**: 업스케일, 디테일러. 업스케일하면 투명도가 사라지므로 배경 투명화는 업스케일 뒤에 하세요.
 - **가림 처리**: (1) 필요하면 부위를 검출하고, (2) 빨간 마스크를 브러시와 지우개로 고친 뒤(되돌리기
@@ -138,11 +154,11 @@ ComfyUI `models/`의 하위 폴더(또는 Stability Matrix의 공유 모델 폴�
 
 ### 생성 (필수)
 
-| 항목 | 받는 곳 | ComfyUI 폴더 |
-|---|---|---|
+| 항목                                                                                       | 받는 곳                                                                                                                                                                 | ComfyUI 폴더       |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | Anima 확산 모델, 예: `anima-aesthetic-v1.1.safetensors` 또는 `anima-base-v1.0.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/diffusion_models) ([Civitai](https://civitai.com/models/2458426)에도 있음) | `diffusion_models` |
-| 텍스트 인코더 `qwen_3_06b_base.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders) | `text_encoders` |
-| VAE `qwen_image_vae.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae) | `vae` |
+| 텍스트 인코더 `qwen_3_06b_base.safetensors`                                                | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders)                                                             | `text_encoders`    |
+| VAE `qwen_image_vae.safetensors`                                                           | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae)                                                                       | `vae`              |
 
 자체 텍스트 인코더가 있는 체크포인트형 Anima 파인튜닝(예: [MiaoMiao Harem](https://civitai.com/models/934764))도
 됩니다. 생성 설정에서 체크포인트와 그 텍스트 인코더를 고르세요. SDXL/Illustrious는 `checkpoints`에
@@ -154,17 +170,17 @@ Asset Studio가 파일별 모델 계열을 알고 맞는 파일만 보여 줍니
 
 ### 선택 기능
 
-| 기능 | 커스텀 노드 | 모델 |
-|---|---|---|
-| 태그 자동완성·태그 확인 | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) (Danbooru 태그 파일만 읽음) | — |
-| WD14 태그 분석 (이미지 도구) | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 처음 쓸 때 노드가 내려받음, 예: [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3) |
-| 배경 투명화 | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) (requirements로 `rembg` 설치), Asset Studio 노드 묶음 | `isnet-anime`은 처음 쓸 때 rembg가 내려받음 |
-| 가림 부위 검출 | Asset Studio 노드 묶음, ComfyUI Python의 `ultralytics` (Impact Subpack이 설치) | [Anime NSFW Detection](https://civitai.com/models/1313556)의 `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm` |
-| 인물 마스크 (배경 투명화 대안) | Asset Studio 노드 묶음, `ultralytics` | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer)의 `person_yolov8n-seg.pt` → `ultralytics/segm` |
-| 업스케일 | Asset Studio 노드 묶음 | 예: [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4), [4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models` |
-| 디테일러 (얼굴, 눈, 입, 손) | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack), [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack), Asset Studio 노드 묶음 | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer)의 `face_yolov8m.pt`, `hand_yolov8s.pt` → `ultralytics/bbox`; [Eye Detailer/Segmentation](https://civitai.com/models/334668)의 `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
-| 비전 모델 자동 검수 | 로컬 OpenAI 호환 서버(예: [LM Studio](https://lmstudio.ai/)) | 원하는 비전-언어 모델 |
-| LoRA 학습 | — | [LoRA 학습](#lora-학습) 참고 |
+| 기능                           | 커스텀 노드                                                                                                                                                                  | 모델                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 태그 자동완성·태그 확인        | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) (Danbooru 태그 파일만 읽음)                                                                           | —                                                                                                                                                                                                                                                                                                                                                |
+| WD14 태그 분석 (이미지 도구)   | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)                                                                                                  | 처음 쓸 때 노드가 내려받음, 예: [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3)                                                                                                                                                                                                                          |
+| 배경 투명화                    | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) (requirements로 `rembg` 설치), Asset Studio 노드 묶음                                                      | `isnet-anime`은 처음 쓸 때 rembg가 내려받음                                                                                                                                                                                                                                                                                                      |
+| 가림 부위 검출                 | Asset Studio 노드 묶음, ComfyUI Python의 `ultralytics` (Impact Subpack이 설치)                                                                                               | [Anime NSFW Detection](https://civitai.com/models/1313556)의 `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm`                                                                                                                                                                                                                         |
+| 인물 마스크 (배경 투명화 대안) | Asset Studio 노드 묶음, `ultralytics`                                                                                                                                        | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer)의 `person_yolov8n-seg.pt` → `ultralytics/segm`                                                                                                                                                                                                                                       |
+| 업스케일                       | Asset Studio 노드 묶음                                                                                                                                                       | 예: [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4), [4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models`                                                                                                                                                                                             |
+| 디테일러 (얼굴, 눈, 입, 손)    | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack), [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack), Asset Studio 노드 묶음 | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer)의 `face_yolov8m.pt`, `hand_yolov8s.pt` → `ultralytics/bbox`; [Eye Detailer/Segmentation](https://civitai.com/models/334668)의 `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
+| 비전 모델 자동 검수            | 로컬 OpenAI 호환 서버(예: [LM Studio](https://lmstudio.ai/))                                                                                                                 | 원하는 비전-언어 모델                                                                                                                                                                                                                                                                                                                            |
+| LoRA 학습                      | —                                                                                                                                                                            | [LoRA 학습](#lora-학습) 참고                                                                                                                                                                                                                                                                                                                     |
 
 Civitai의 검출 모델은 ZIP 파일입니다. `.pt` 파일을 풀어 표의 폴더에 넣으세요. Asset Studio 노드
 묶음은 [설치](#설치) 4단계에서 연결한 `comfy_nodes/asset_studio_nodes` 폴더입니다. 가림 처리
@@ -174,15 +190,15 @@ Civitai의 검출 모델은 ZIP 파일입니다. `.pt` 파일을 풀어 표의 �
 
 노드 설치 스크립트는 이 버전을 설치합니다. 다른 버전도 될 수 있지만 확인하지 않았습니다.
 
-| 구성 요소 | 버전 | 커밋 | 라이선스 |
-|---|---|---|---|
-| ComfyUI | 0.38.0 | — | GPL-3.0 |
-| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) | 1.1.1 | `66ae8b6` | MIT |
-| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 1.0.1 | `9e0a6e7` | MIT |
-| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) | 1.1.0 | `9d9f4be` | MIT |
-| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack) | 8.28.3 | `429d015` | GPL-3.0 |
-| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5 | `50c7b71` | AGPL-3.0 |
-| Python 패키지 (노드가 설치) | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | — | AGPL-3.0 · MIT · MIT |
+| 구성 요소                                                                    | 버전                                                  | 커밋      | 라이선스             |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- | --------- | -------------------- |
+| ComfyUI                                                                      | 0.38.0                                                | —         | GPL-3.0              |
+| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)       | 1.1.1                                                 | `66ae8b6` | MIT                  |
+| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)  | 1.0.1                                                 | `9e0a6e7` | MIT                  |
+| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)            | 1.1.0                                                 | `9d9f4be` | MIT                  |
+| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)       | 8.28.3                                                | `429d015` | GPL-3.0              |
+| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5                                                 | `50c7b71` | AGPL-3.0             |
+| Python 패키지 (노드가 설치)                                                  | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | —         | AGPL-3.0 · MIT · MIT |
 
 ## LoRA 학습
 
@@ -204,6 +220,7 @@ Civitai의 검출 모델은 ZIP 파일입니다. `.pt` 파일을 풀어 표의 �
 
    `uv sync`에 더 필요한 것이 있으면 anima_lora의 [Setup](https://github.com/sorryhyun/anima_lora#setup)을
    따르세요(Python 3.13과 CUDA용 PyTorch를 쓰므로 최신 NVIDIA 드라이버가 필요합니다).
+
 2. Asset Studio의 작은 패치를 적용합니다. 전처리가 anima_lora의 `models/` 폴더 대신 지정한 모델
    파일을 쓰게 합니다.
 
@@ -228,14 +245,14 @@ Asset Studio가 학습할 때마다 학습 도구의 프리셋(`vendor/anima_lor
 모든 설정은 **설정** 화면에서 바꾸고 서버의 `data/settings/`에 저장되므로, 같은 PC의 모든 브라우저에서
 같은 설정이 보입니다.
 
-| 항목 | 내용 |
-|---|---|
-| 일반 | 언어, 테마, 태그 자동완성 |
-| ComfyUI 연결 정보 | ComfyUI 주소, 폴더, Python |
-| Danbooru 태그 데이터 | 태그 파일이 ComfyUI-EasyUseAnima에 없을 때의 폴더 |
-| LoRA 학습 | 학습 도구 폴더, 그 Python, LoRA 저장 폴더, 학습용 모델 |
-| GPU 사용 / GPU 대기 조건 | 다른 프로그램이 GPU를 쓸 때 기다림(남은 VRAM, 프로그램 이름) |
-| VLM 서버 / VLM 검증 | 선택 기능인 자동 검수: 서버 주소, 모델, 모델을 올리고 내리는 명령(예: LM Studio의 `lms load` / `lms unload` / `lms ps`), 켜기·끄기 |
+| 항목                     | 내용                                                                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 일반                     | 언어, 테마, 태그 자동완성                                                                                                          |
+| ComfyUI 연결 정보        | ComfyUI 주소, 폴더, Python                                                                                                         |
+| Danbooru 태그 데이터     | 태그 파일이 ComfyUI-EasyUseAnima에 없을 때의 폴더                                                                                  |
+| LoRA 학습                | 학습 도구 폴더, 그 Python, LoRA 저장 폴더, 학습용 모델                                                                             |
+| GPU 사용 / GPU 대기 조건 | 다른 프로그램이 GPU를 쓸 때 기다림(남은 VRAM, 프로그램 이름)                                                                       |
+| VLM 서버 / VLM 검증      | 선택 기능인 자동 검수: 서버 주소, 모델, 모델을 올리고 내리는 명령(예: LM Studio의 `lms load` / `lms unload` / `lms ps`), 켜기·끄기 |
 
 `config/models.example.json`(`data/settings/models.json`으로 복사)은 공유 모델 폴더와 수동 모델 계열을
 지정합니다. 대부분은 필요하지 않습니다.
@@ -245,7 +262,7 @@ Asset Studio가 학습할 때마다 학습 도구의 프리셋(`vendor/anima_lor
 - `data/`에는 프롬프트 라이브러리, 검수 결과, 데이터셋, LoRA 기록, 설정이 있고, `outputs/`에는
   생성·처리한 이미지가 있습니다. 두 폴더를 백업하세요. 둘 다 git 저장소에 포함되지 않습니다.
 - 프롬프트를 지우면 라이브러리 휴지통으로 가며, 거기서 되살릴 수 있습니다.
-- `outputs/_lab/`에는 실험실 이미지, `outputs/_tools/`에는 이미지 도구 결과가 있습니다. 갤러리는
+- `outputs/_lab/`에는 생성·비교 이미지, `outputs/_tools/`에는 이미지 도구 결과가 있습니다. 갤러리는
   `outputs/` 아래의 모든 이미지를 보여 줍니다.
 
 ## 문제 해결

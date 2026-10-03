@@ -20,14 +20,18 @@ LoRA を学習します。自分の PC で動き、自分の ComfyUI と通信�
   SDXL/Illustrious のグラフに対応します。
 - **ギャラリー**: 画像を合格/不合格でレビューし、作品・キャラクター・衣装・表情・モデルで絞り込み、
   新しいシードで再生成し、合格画像を ZIP で書き出します。
-- **ラボ**: 1つのプロンプトを複数のシードや1つの設定値(CFG、ステップ、サンプラー、スケジューラー、
-  CLIP skip、LoRA 強度)で生成し、並べて表示またはスライダーで比較します。
 - **画像ツール**: 画像をアップロードするかギャラリーから取り込み、制作情報(Asset Studio の記録、
   ComfyUI グラフ、A1111 parameters、EXIF)を読み、WD14 タグ解析、背景透過、アップスケール、顔・手の
-  描き直し(ディテイラー)、塗って直せるマスクでのモザイク処理、WebP 変換を行います。
+  描き直し(ディテイラー)、塗って直せるマスクでのモザイク処理、WebP 変換、NovelAI V5・Anima・
+  SDXL/Illustrious(ComfyUI)間のプロンプト形式変換を行います。
 - **LoRA**: 合格画像からデータセットを作り、キャプションを直して
   [anima_lora](https://github.com/sorryhyun/anima_lora) で学習し、結果を登録してそのキャラクターの生成
   時に自動で適用します。
+- **生成・比較**: **単一生成**タブでは1枚を生成し、**比較生成**タブではシード、1つの設定、または作者候補を比較
+  します。作者候補は1行に1つ、複数作者の組み合わせは同じ行に書きます。**アーティストなしの基準画像を含める**を
+  オンにすると、作者タグなしの基準を追加できます。
+  共通プロンプトはすべてに残り、作者タグを自動削除しません。比べる作者は共通プロンプトから外します。
+  同じ行の候補は同じシードを使います。候補は最大12件、シードは最大16個、1回の生成は最大48枚です。
 
 画像は ComfyUI の `prompt` と `workflow` を埋め込んだ PNG で保存されるため、ComfyUI で結果をワーク
 フローとして開けます。
@@ -64,6 +68,7 @@ LoRA を学習します。自分の PC で動き、自分の ComfyUI と通信�
    ```
 
    このファイルがなければ `PATH` の `pythonw` を使います。
+
 4. 追加機能には ComfyUI のカスタムノードとモデルが必要です。`tools/install_comfy_nodes.py` が
    カスタムノードを[確認済みバージョン](#確認済みバージョン)で入れ、Asset Studio のノードパックを ComfyUI に
    リンクします。ComfyUI の Python で実行してください(ポータブル版は `python_embeded\python.exe`)。`python` だけだと
@@ -115,10 +120,21 @@ LoRA を学習します。自分の PC で動き、自分の ComfyUI と通信�
 
 ### 画像ツールの概要
 
+- **プロンプト形式**: ポジティブ・ネガティブプロンプトを直接入力するか、選択した各ギャラリー画像の
+  制作情報から別々に変換します。`@name` と `artist:name` は作者タグと明示し、接頭辞なしの名前は任意の
+  作者リストにある場合だけ作者として扱います。NovelAI の `1.2::tag::` は ComfyUI の `(tag:1.2)`に、
+  単純な ComfyUI `(tag:1.2)` は NovelAI の数値ウェイトに変換します。`{tag}` と `[tag]` は ComfyUI の
+  明示的なウェイトになります。モデルごとに数値ウェイトの効果が異なるため、変換後に手動で調整して
+  ください。未知の通常タグと自然文は警告なしでそのまま残します。変換できない複雑な構文(一部のネスト形式を含む)、不正な構文、
+  0以下のウェイトは警告とともに保持します。自然文から作者名を抽出したり品質タグを変更したりしません。
+  [NovelAI のウェイト構文](https://docs.novelai.net/en/image/strengthening-weakening/)と
+  [Anima のプロンプト](https://huggingface.co/circlestone-labs/Anima#prompting)を参照してください。
+  結果をコピーするか生成・比較(`/lab`)へ送れます。NovelAI で画像を生成せず、外部 AI サービスにも接続
+  しません。元画像は変更しません。
 - **WebP 変換**: 品質、ロスレス、サイズ変更。「メタデータを保持」は既定でオフなので、共有するファイルに
   プロンプトやワークフローは残りません。
 - **タグ解析**: WD14 タグを画像のプロンプトと比較します(一致、画像からのみ検出、画像から読み取れず)。
-  除外するタグを決めておき、タグのコピーやラボへの送信、選んだ画像のタグを TXT(LoRA キャプション)や
+  除外するタグを決めておき、タグのコピーや生成・比較への送信、選んだ画像のタグを TXT(LoRA キャプション)や
   JSON で書き出せます。選んだ画像は ZIP でまとめてダウンロードできます。
 - **後処理**: アップスケール、ディテイラー。アップスケールすると透過が失われるので、背景透過は
   アップスケールの後に行ってください。
@@ -140,11 +156,11 @@ LoRA を学習します。自分の PC で動き、自分の ComfyUI と通信�
 
 ### 生成(必須)
 
-| 項目 | 入手先 | ComfyUI フォルダー |
-|---|---|---|
+| 項目                                                                                          | 入手先                                                                                                                                                                 | ComfyUI フォルダー |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | Anima 拡散モデル、例: `anima-aesthetic-v1.1.safetensors` または `anima-base-v1.0.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/diffusion_models)([Civitai](https://civitai.com/models/2458426) にもあり) | `diffusion_models` |
-| テキストエンコーダー `qwen_3_06b_base.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders) | `text_encoders` |
-| VAE `qwen_image_vae.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae) | `vae` |
+| テキストエンコーダー `qwen_3_06b_base.safetensors`                                            | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders)                                                            | `text_encoders`    |
+| VAE `qwen_image_vae.safetensors`                                                              | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae)                                                                      | `vae`              |
 
 独自のテキストエンコーダーを持つチェックポイント形式の Anima ファインチューン(例:
 [MiaoMiao Harem](https://civitai.com/models/934764))も使えます。生成設定でチェックポイントとその
@@ -157,17 +173,17 @@ NoobAI のチェックポイントで動きます。
 
 ### 追加機能
 
-| 機能 | カスタムノード | モデル |
-|---|---|---|
-| タグの自動補完・タグ確認 | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)(Danbooru タグファイルのみ読み込み) | — |
-| WD14 タグ解析(画像ツール) | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 初回使用時にノードがダウンロード、例: [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3) |
-| 背景透過 | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)(requirements で `rembg` を導入)、Asset Studio のノードパック | `isnet-anime` は初回使用時に rembg がダウンロード |
-| 隠す部位の検出 | Asset Studio のノードパック、ComfyUI の Python の `ultralytics`(Impact Subpack が導入) | [Anime NSFW Detection](https://civitai.com/models/1313556) の `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm` |
-| 人物マスク(背景透過の代替) | Asset Studio のノードパック、`ultralytics` | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) の `person_yolov8n-seg.pt` → `ultralytics/segm` |
-| アップスケール | Asset Studio のノードパック | 例: [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4)、[4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models` |
-| ディテイラー(顔、目、口、手) | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)、[ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack)、Asset Studio のノードパック | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) の `face_yolov8m.pt`、`hand_yolov8s.pt` → `ultralytics/bbox`; [Eye Detailer/Segmentation](https://civitai.com/models/334668) の `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
-| ビジョンモデルによる自動レビュー | ローカルの OpenAI 互換サーバー(例: [LM Studio](https://lmstudio.ai/)) | 任意のビジョン言語モデル |
-| LoRA 学習 | — | [LoRA 学習](#lora-学習)を参照 |
+| 機能                             | カスタムノード                                                                                                                                                                    | モデル                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| タグの自動補完・タグ確認         | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)(Danbooru タグファイルのみ読み込み)                                                                         | —                                                                                                                                                                                                                                                                                                                                                  |
+| WD14 タグ解析(画像ツール)        | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)                                                                                                       | 初回使用時にノードがダウンロード、例: [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3)                                                                                                                                                                                                                      |
+| 背景透過                         | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)(requirements で `rembg` を導入)、Asset Studio のノードパック                                                    | `isnet-anime` は初回使用時に rembg がダウンロード                                                                                                                                                                                                                                                                                                  |
+| 隠す部位の検出                   | Asset Studio のノードパック、ComfyUI の Python の `ultralytics`(Impact Subpack が導入)                                                                                            | [Anime NSFW Detection](https://civitai.com/models/1313556) の `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm`                                                                                                                                                                                                                          |
+| 人物マスク(背景透過の代替)       | Asset Studio のノードパック、`ultralytics`                                                                                                                                        | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) の `person_yolov8n-seg.pt` → `ultralytics/segm`                                                                                                                                                                                                                                        |
+| アップスケール                   | Asset Studio のノードパック                                                                                                                                                       | 例: [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4)、[4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models`                                                                                                                                                                                               |
+| ディテイラー(顔、目、口、手)     | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)、[ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack)、Asset Studio のノードパック | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) の `face_yolov8m.pt`、`hand_yolov8s.pt` → `ultralytics/bbox`; [Eye Detailer/Segmentation](https://civitai.com/models/334668) の `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
+| ビジョンモデルによる自動レビュー | ローカルの OpenAI 互換サーバー(例: [LM Studio](https://lmstudio.ai/))                                                                                                             | 任意のビジョン言語モデル                                                                                                                                                                                                                                                                                                                           |
+| LoRA 学習                        | —                                                                                                                                                                                 | [LoRA 学習](#lora-学習)を参照                                                                                                                                                                                                                                                                                                                      |
 
 Civitai の検出モデルは ZIP ファイルです。`.pt` ファイルを展開して表のフォルダーに置いてください。
 Asset Studio のノードパックは[インストール](#インストール)の手順4でリンクした
@@ -178,15 +194,15 @@ Asset Studio のノードパックは[インストール](#インストール)�
 
 ノードのインストールスクリプトはこのバージョンを入れます。ほかのバージョンでも動く可能性はありますが、確認していません。
 
-| 構成要素 | バージョン | コミット | ライセンス |
-|---|---|---|---|
-| ComfyUI | 0.38.0 | — | GPL-3.0 |
-| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) | 1.1.1 | `66ae8b6` | MIT |
-| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 1.0.1 | `9e0a6e7` | MIT |
-| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) | 1.1.0 | `9d9f4be` | MIT |
-| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack) | 8.28.3 | `429d015` | GPL-3.0 |
-| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5 | `50c7b71` | AGPL-3.0 |
-| Python パッケージ(ノードが導入) | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | — | AGPL-3.0 · MIT · MIT |
+| 構成要素                                                                     | バージョン                                            | コミット  | ライセンス           |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- | --------- | -------------------- |
+| ComfyUI                                                                      | 0.38.0                                                | —         | GPL-3.0              |
+| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)       | 1.1.1                                                 | `66ae8b6` | MIT                  |
+| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)  | 1.0.1                                                 | `9e0a6e7` | MIT                  |
+| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)            | 1.1.0                                                 | `9d9f4be` | MIT                  |
+| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)       | 8.28.3                                                | `429d015` | GPL-3.0              |
+| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5                                                 | `50c7b71` | AGPL-3.0             |
+| Python パッケージ(ノードが導入)                                              | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | —         | AGPL-3.0 · MIT · MIT |
 
 ## LoRA 学習
 
@@ -209,6 +225,7 @@ Asset Studio のノードパックは[インストール](#インストール)�
    `uv sync` で足りないものがあれば anima_lora の
    [Setup](https://github.com/sorryhyun/anima_lora#setup) に従ってください(Python 3.13 と CUDA 版
    PyTorch を使うため、新しい NVIDIA ドライバーが必要です)。
+
 2. Asset Studio の小さなパッチを適用します。前処理が anima_lora の `models/` フォルダーではなく指定した
    モデルファイルを使うようになります。
 
@@ -235,13 +252,13 @@ Asset Studio は学習のたびに学習ツールのプリセット(`vendor/anim
 すべての設定は**設定**画面で変更し、サーバーの `data/settings/` に保存されるため、同じ PC のすべての
 ブラウザーで同じ設定になります。
 
-| 項目 | 内容 |
-|---|---|
-| 一般 | 言語、テーマ、タグの自動補完 |
-| ComfyUI 接続情報 | ComfyUI のアドレス、フォルダー、Python |
-| Danbooru タグデータ | タグファイルが ComfyUI-EasyUseAnima にない場合のフォルダー |
-| LoRA 学習 | 学習ツールのフォルダー、その Python、LoRA 保存フォルダー、学習用モデル |
-| GPU の使用 / GPU 待機条件 | 他のプログラムが GPU を使っている間は待機(空き VRAM、プログラム名) |
+| 項目                        | 内容                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 一般                        | 言語、テーマ、タグの自動補完                                                                                                                      |
+| ComfyUI 接続情報            | ComfyUI のアドレス、フォルダー、Python                                                                                                            |
+| Danbooru タグデータ         | タグファイルが ComfyUI-EasyUseAnima にない場合のフォルダー                                                                                        |
+| LoRA 学習                   | 学習ツールのフォルダー、その Python、LoRA 保存フォルダー、学習用モデル                                                                            |
+| GPU の使用 / GPU 待機条件   | 他のプログラムが GPU を使っている間は待機(空き VRAM、プログラム名)                                                                                |
 | VLM サーバー / VLM レビュー | 任意の自動レビュー: サーバーのアドレス、モデル、モデルを載せ降ろしするコマンド(例: LM Studio の `lms load` / `lms unload` / `lms ps`)、オン・オフ |
 
 `config/models.example.json`(`data/settings/models.json` にコピー)は共有モデルフォルダーと手動の
@@ -253,7 +270,7 @@ Asset Studio は学習のたびに学習ツールのプリセット(`vendor/anim
   には生成・処理した画像があります。両方をバックアップしてください。どちらも git リポジトリには含まれ
   ません。
 - プロンプトを削除するとライブラリのゴミ箱に移り、そこから復元できます。
-- `outputs/_lab/` にはラボの画像、`outputs/_tools/` には画像ツールの結果があります。ギャラリーは
+- `outputs/_lab/` には生成・比較の画像、`outputs/_tools/` には画像ツールの結果があります。ギャラリーは
   `outputs/` 以下のすべての画像を表示します。
 
 ## トラブルシューティング

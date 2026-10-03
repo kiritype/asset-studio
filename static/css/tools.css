@@ -346,6 +346,228 @@
   font-weight: 600;
 }
 
+#app-tools.prompt-mode {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  min-height: 100vh;
+}
+#app-tools.prompt-mode .tl-list {
+  display: none;
+}
+#app-tools.prompt-mode .tl-tools {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 0.45rem 1rem;
+  border: 0;
+  overflow: visible;
+}
+#app-tools.prompt-mode .tl-detail {
+  grid-column: 1;
+  grid-row: 3;
+  padding-top: 0.4rem;
+}
+#app-tools.prompt-mode .tl-header p {
+  display: none;
+}
+#app-tools.prompt-mode .tl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.pc-workspace {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+.pc-intro {
+  margin: 0 0 0.8rem;
+  color: var(--tl-muted);
+}
+.pc-settings {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.7fr) minmax(160px, 0.7fr) minmax(240px, 1.6fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+.pc-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  margin: 0.35rem 0;
+}
+.pc-field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pc-field small,
+.pc-lab-hint,
+.pc-muted {
+  color: var(--tl-muted);
+  font-size: 0.78rem;
+}
+.pc-field select,
+.pc-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--tl-border);
+  border-radius: 8px;
+  background: var(--tl-panel);
+  color: inherit;
+  font: inherit;
+}
+.pc-field textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.84rem;
+}
+.pc-artist-field textarea {
+  min-height: 64px;
+}
+.pc-actions,
+.pc-queue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.55rem 0;
+}
+.pc-queue-status,
+.pc-status {
+  color: var(--tl-muted);
+  font-size: 0.82rem;
+}
+.pc-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+.pc-pane {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--tl-border);
+  border-radius: 10px;
+  background: var(--tl-panel);
+}
+.pc-pane h2,
+.pc-report h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+}
+.pc-pane .pc-field textarea {
+  min-height: 190px;
+}
+.pc-pane .pc-field + .pc-field textarea {
+  min-height: 110px;
+}
+.pc-reports {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+.pc-report {
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--tl-border);
+  border-radius: 9px;
+  background: var(--tl-panel);
+}
+.pc-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+}
+.pc-list li {
+  overflow-wrap: anywhere;
+}
+.pc-list pre {
+  max-height: 8rem;
+  margin: 0.25rem 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.pc-before {
+  color: var(--tl-muted);
+}
+.pc-after {
+  color: var(--tl-ok);
+}
+.pc-warnings {
+  color: var(--tl-warn);
+}
+.pc-picker {
+  width: min(900px, calc(100vw - 2rem));
+  max-height: min(85vh, 900px);
+  padding: 1rem;
+  border: 1px solid var(--tl-border);
+  border-radius: 12px;
+  background: var(--tl-panel);
+  color: var(--tl-text);
+}
+.pc-picker::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+.pc-picker-head,
+.pc-picker-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+}
+.pc-picker-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.pc-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+  gap: 0.55rem;
+  max-height: 60vh;
+  margin: 0.7rem 0;
+  overflow: auto;
+}
+.pc-gallery-item {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.35rem;
+  border: 1px solid var(--tl-border);
+  border-radius: 8px;
+  background: var(--tl-bg);
+  color: inherit;
+  text-align: left;
+}
+.pc-gallery-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: var(--tl-panel);
+}
+.pc-gallery-item span {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .pc-settings,
+  .pc-columns,
+  .pc-reports {
+    grid-template-columns: 1fr;
+  }
+  #app-tools.prompt-mode .tl-tools {
+    padding-inline: 0.7rem;
+  }
+}
+
 @media (max-width: 1100px) {
   #app-tools {
     grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
