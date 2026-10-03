@@ -45,14 +45,14 @@ back to the automatic version.
 
 ![Training settings](/shots/en/20-lora-train-form.webp)
 
-| Setting | Notes |
-|---|---|
-| Dataset | The dataset from step 1. |
-| Method | **T-LoRA** (default, dim 32, alpha 32) or plain **LoRA** (dim 32, alpha 128). |
-| Base model | **Official Anima base** (default) or the **generation model** (an Anima fine-tune set in Settings). |
-| Epochs | How many times the dataset is repeated. Default 40. |
-| Save every (epochs) | Keeps a file at these epochs. With the default 10 you get e10, e20, e30 and e40. |
-| Learning rate | Default 1e-4. |
+| Setting             | Notes                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| Dataset             | The dataset from step 1.                                                                            |
+| Method              | **T-LoRA** (default, dim 32, alpha 32) or plain **LoRA** (dim 32, alpha 128).                       |
+| Base model          | **Official Anima base** (default) or the **generation model** (an Anima fine-tune set in Settings). |
+| Epochs              | How many times the dataset is repeated. Default 40.                                                 |
+| Save every (epochs) | Keeps a file at these epochs. With the default 10 you get e10, e20, e30 and e40.                    |
+| Learning rate       | Default 1e-4.                                                                                       |
 
 **Start training** runs preprocessing (resizing images, encoding captions) and then training;
 progress shows under **Training runs**. New images are not generated while a LoRA trains; queued
@@ -67,13 +67,13 @@ the **Registered LoRAs** tab.
 
 ![Registered LoRAs](/shots/en/25-lora-list.webp)
 
-| Setting | Notes |
-|---|---|
-| Auto apply | When on, the Jobs menu adds the LoRA and the trigger for this character. |
-| Applies to | The whole character or one outfit set. |
-| Scope | This character only, or global. |
-| Strength | LoRA strength. Lower it if the framing drifts. |
-| Model family | The model family this LoRA is for. |
+| Setting      | Notes                                                                    |
+| ------------ | ------------------------------------------------------------------------ |
+| Auto apply   | When on, the Jobs menu adds the LoRA and the trigger for this character. |
+| Applies to   | The whole character or one outfit set.                                   |
+| Scope        | This character only, or global.                                          |
+| Strength     | LoRA strength. Lower it if the framing drifts.                           |
+| Model family | The model family this LoRA is for.                                       |
 
 Only one LoRA per character, outfit and model family can be applied automatically. Untick
 **Apply registered LoRAs automatically** in the Jobs menu to leave it out of one queueing. The
@@ -82,7 +82,7 @@ Only one LoRA per character, outfit and model family can be applied automaticall
 ## Choosing an epoch
 
 Comparing epochs or strengths with the same seed makes the choice easy. Vary **LoRA strength** in
-the [lab](./lab), or register several epochs and generate with the same seed.
+[Generate & compare](./lab), or register several epochs and generate with the same seed.
 
 Below, the sample character trained on 30 square images for 40 epochs, with the LoRA off (top)
 and on (bottom) at the same seed. The chest emblem and striped tie from the dataset appear in

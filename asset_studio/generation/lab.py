@@ -49,17 +49,17 @@ def _text(value, name):
     return value.strip()
 
 
-def _variants(settings, sweep):
-    """``[(label, changes)]``: one entry per tried value, or the settings as they are."""
+def _variants(settings, sweep, positive=''):
+    """Return candidate labels, setting changes, and optional positive prompts."""
     if not sweep:
-        return [('', {})]
+        return [('', {}, None)]
     key = sweep.get('key')
-    if key not in SWEEP_KEYS:
+    if key != 'artist' and key not in SWEEP_KEYS:
         raise ValueError(
             Msg(
                 'server.lab.the_value_to_vary_is_one',
                 'The value to vary is one of {values}.',
-                values=', '.join(SWEEP_LABELS.values()),
+                values=', '.join([*SWEEP_LABELS.values(), 'artist']),
             )
         )
     values = sweep.get('values')
@@ -71,6 +71,27 @@ def _variants(settings, sweep):
                 max_variants=MAX_VARIANTS,
             )
         )
+    if key == 'artist':
+        candidates = []
+        for value in values:
+            if not isinstance(value, str) or len(value) > MAX_PROMPT_LENGTH:
+                raise ValueError(
+                    Msg('server.lab.check_the_values', 'Check the {key} values.', key='artist')
+                )
+            candidates.append(value.strip())
+        if len(set(candidates)) != len(candidates):
+            raise ValueError(
+                Msg('server.lab.check_the_values', 'Check the {key} values.', key='artist')
+            )
+        variants = []
+        for candidate in candidates:
+            effective_positive = f'{positive}, {candidate}' if candidate else positive
+            _text(
+                effective_positive,
+                Msg('server.lab.positive_prompt', 'Positive prompt'),
+            )
+            variants.append((candidate, {}, effective_positive))
+        return variants
     try:
         values = [SWEEP_KEYS[key](value) for value in values]
     except (TypeError, ValueError) as error:
@@ -78,7 +99,7 @@ def _variants(settings, sweep):
             Msg('server.lab.check_the_values', 'Check the {key} values.', key=SWEEP_LABELS[key])
         ) from error
     if key != 'lora_strength':
-        return [(f'{SWEEP_LABELS[key]} {value}', {key: value}) for value in values]
+        return [(f'{SWEEP_LABELS[key]} {value}', {key: value}, None) for value in values]
     index = sweep.get('lora_index', 0)
     loras = settings.get('loras') or []
     if not isinstance(index, int) or not 0 <= index < len(loras):
@@ -96,6 +117,7 @@ def _variants(settings, sweep):
             (
                 Msg('server.lab.lora_strength_2', 'LoRA strength {value}', value=value),
                 {'loras': changed},
+                None,
             )
         )
     return result
@@ -132,8 +154,16 @@ class LabMixin:
             raise ValueError(catalog['error'])
         base = validate_settings(body.get('settings', {}), catalog)
         variants = [
-            (label, validate_settings({**base, **changes}, catalog))
-            for label, changes in _variants(base, body.get('sweep'))
+            (
+                label,
+                validate_settings({**base, **changes}, catalog),
+                variant_positive or positive,
+            )
+            for label, changes, variant_positive in _variants(
+                base,
+                body.get('sweep'),
+                positive,
+            )
         ]
         if count * len(variants) > MAX_JOBS:
             raise ValueError(
@@ -150,13 +180,13 @@ class LabMixin:
         created = now()
         prepared = []
         for row, seed in enumerate(seeds):
-            for column, (label, settings) in enumerate(variants):
+            for column, (label, settings, variant_positive) in enumerate(variants):
                 title = ' · '.join(
                     filter(None, [label, Msg('server.lab.seed', 'Seed {seed}', seed=seed)])
                 )
                 snapshot = {
                     'kind': 'lab',
-                    'positive': positive,
+                    'positive': variant_positive,
                     'negative': negative,
                     'settings': {**settings, 'seed': seed},
                     'lab_group': group,
@@ -193,7 +223,7 @@ class LabMixin:
         return {
             'ok': True,
             'lab_group': group,
-            'variants': [label for label, _ in variants],
+            'variants': [label for label, _, _ in variants],
             'seeds': seeds,
             'jobs': [{k: v for k, v in j.items() if k != 'snapshot'} for j in prepared],
         }

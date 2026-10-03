@@ -32,6 +32,46 @@ class LabTest(unittest.TestCase):
         self.assertTrue(all(j['kind'] == 'lab' and not j['review_requested'] for j in jobs))
         self.assertEqual({j['lab_group'] for j in jobs}, {result['lab_group']})
 
+    def test_artist_sweep_replaces_candidate_and_keeps_empty_baseline(self):
+        result = self.app.enqueue_lab(
+            {
+                **self.body,
+                'count': 2,
+                'sweep': {'key': 'artist', 'values': ['artist:foo', '', 'artist:bar, artist:baz']},
+            }
+        )
+        self.assertEqual(result['variants'], ['artist:foo', '', 'artist:bar, artist:baz'])
+        self.assertEqual(result['seeds'], [42, 43])
+        jobs = self.app.jobs
+        self.assertEqual([job['seed'] for job in jobs], [42, 42, 42, 43, 43, 43])
+        self.assertEqual([job['lab_variant'] for job in jobs[:3]], result['variants'])
+        self.assertEqual(
+            [job['snapshot']['positive'] for job in jobs[:3]],
+            ['1girl, smile, artist:foo', '1girl, smile', '1girl, smile, artist:bar, artist:baz'],
+        )
+        self.assertEqual(
+            [job['snapshot']['positive'] for job in jobs[3:]],
+            ['1girl, smile, artist:foo', '1girl, smile', '1girl, smile, artist:bar, artist:baz'],
+        )
+
+    def test_artist_sweep_rejects_duplicate_candidates(self):
+        with self.assertRaises(ValueError):
+            self.app.enqueue_lab(
+                {**self.body, 'sweep': {'key': 'artist', 'values': ['artist:foo', ' artist:foo ']}}
+            )
+        self.assertEqual(self.app.jobs, [])
+
+    def test_sweep_job_limit_still_applies_to_artist_candidates(self):
+        with self.assertRaises(ValueError):
+            self.app.enqueue_lab(
+                {
+                    **self.body,
+                    'count': 5,
+                    'sweep': {'key': 'artist', 'values': [f'artist:{i}' for i in range(10)]},
+                }
+            )
+        self.assertEqual(self.app.jobs, [])
+
     def test_lora_strength_sweep_changes_only_that_lora(self):
         catalog = dict(FakeComfy('white').catalog(), loras=['a.safetensors', 'b.safetensors'])
         self.app.comfy.catalog = lambda: catalog

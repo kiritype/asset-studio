@@ -19,13 +19,15 @@ Asset Studio 是一个本地 Web 应用，用 [ComfyUI](https://github.com/comfy
   两种图。
 - **图库**: 将图像标记为通过/未通过，按作品、角色、服装、表情或模型筛选，用新种子重新生成，并将通过
   的图像导出为 ZIP。
-- **实验室**: 用多个种子或某一个设置值(CFG、步数、采样器、调度器、CLIP skip、LoRA 强度)生成同一
-  提示词，并排或用滑块对比结果。
 - **图像工具**: 上传图像或从图库导入，读取制作信息(Asset Studio 记录、ComfyUI 图、A1111 parameters、
   EXIF)，进行 WD14 标签分析、背景透明化、放大、重绘面部和手部(细节修复)、用可绘制的遮罩进行遮挡处理，
-  以及转换为 WebP。
+  转换为 WebP，并支持 NovelAI V5、Anima 和 SDXL/Illustrious(ComfyUI)提示词格式转换。
 - **LoRA**: 用通过审核的图像创建数据集、修改标注，用 [anima_lora](https://github.com/sorryhyun/anima_lora)
   训练，注册结果后在生成该角色时自动应用。
+- **生成·对比**: **单张生成**页只生成一张图；**对比生成**页只改变种子、一个设置值或画师候选。画师候选每行一个，
+  一行可以混合多位画师。开启**包含无画师基准图**后，会额外生成不带画师标签的基准图。所有候选都保留公共提示词，也不会自动删除旧的
+  画师标签；对比时请从公共提示词中移除这些画师。每一行候选共用一个种子。最多比较12个候选、16个种子，
+  每次最多生成48张。
 
 图像以嵌入了 ComfyUI `prompt` 和 `workflow` 的 PNG 保存，因此可以在 ComfyUI 中把任何结果作为工作流
 打开。
@@ -61,6 +63,7 @@ Asset Studio 是一个本地 Web 应用，用 [ComfyUI](https://github.com/comfy
    ```
 
    没有此文件时使用 `PATH` 中的 `pythonw`。
+
 4. 可选功能需要 ComfyUI 自定义节点和模型。`tools/install_comfy_nodes.py` 会按[已验证版本](#已验证版本)
    安装自定义节点，并把 Asset Studio 的节点包链接到 ComfyUI。请用 ComfyUI 的 Python 运行(便携版为
    `python_embeded\python.exe`)；只输入 `python` 可能会打开 Microsoft Store。它会自动找到正在运行的 ComfyUI 及其 Python，在加上 `--yes` 之前只显示计划:
@@ -105,9 +108,19 @@ Asset Studio 是一个本地 Web 应用，用 [ComfyUI](https://github.com/comfy
 
 ### 图像工具一览
 
+- **提示词格式**: 可直接输入正向/负向提示词，也可分别转换每张所选图库图像自己的制作信息。`@name` 和
+  `artist:name` 明确表示画师标签；不带前缀的名字只有加入可选的用户画师列表后才会按画师处理。NovelAI 的
+  `1.2::tag::` 转为 ComfyUI `(tag:1.2)`；简单的 ComfyUI `(tag:1.2)` 转为 NovelAI 数字权重。`{tag}` 和
+  `[tag]` 转为 ComfyUI 显式权重。不同模型对数值权重的响应不同，请手动调整转换后的提示词。未知普通标签和
+  自然语言会原样保留，不显示警告。转换器无法处理的复杂语法(包括部分嵌套形式)、格式错误和小于等于零的权重会保留并显示警告。
+  不会从自然语言中提取画师，
+  也不会自动修改质量标签。可复制结果或发送到生成·对比
+  (`/lab`)；此处不会使用 NovelAI 生成图像，也不会连接外部 AI 服务。原始图像不会改变。参见
+  [NovelAI 权重语法](https://docs.novelai.net/en/image/strengthening-weakening/)和
+  [Anima 提示词说明](https://huggingface.co/circlestone-labs/Anima#prompting)。
 - **WebP 转换**: 质量、无损、调整尺寸。"保留元数据"默认关闭，分享的文件不会带有提示词和工作流。
 - **标签分析**: 将 WD14 标签与图像的提示词对比(一致、仅在图中识别、图中未识别)。可设置排除的标签，
-  复制标签或发送到实验室，也可将所选图片的标签导出为 TXT(LoRA 标注)或 JSON。所选图片可打包为 ZIP 下载。
+  复制标签或发送到生成·对比，也可将所选图片的标签导出为 TXT(LoRA 标注)或 JSON。所选图片可打包为 ZIP 下载。
 - **后期处理**: 放大、细节修复。放大会丢失透明度，因此请在放大之后再做背景透明化。
 - **遮挡处理**: (1) 需要时检测部位，(2) 用画笔和橡皮擦修改红色遮罩(可撤销)，(3) 以马赛克、模糊或纯色
   应用，可选遮罩扩展和边缘柔化。
@@ -124,11 +137,11 @@ Asset Studio 是一个本地 Web 应用，用 [ComfyUI](https://github.com/comfy
 
 ### 生成(必需)
 
-| 项目 | 获取地址 | ComfyUI 文件夹 |
-|---|---|---|
+| 项目                                                                                     | 获取地址                                                                                                                                                           | ComfyUI 文件夹     |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | Anima 扩散模型，例如 `anima-aesthetic-v1.1.safetensors` 或 `anima-base-v1.0.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/diffusion_models)(也在 [Civitai](https://civitai.com/models/2458426)) | `diffusion_models` |
-| 文本编码器 `qwen_3_06b_base.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders) | `text_encoders` |
-| VAE `qwen_image_vae.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae) | `vae` |
+| 文本编码器 `qwen_3_06b_base.safetensors`                                                 | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders)                                                        | `text_encoders`    |
+| VAE `qwen_image_vae.safetensors`                                                         | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae)                                                                  | `vae`              |
 
 带有自己文本编码器的检查点形式 Anima 微调模型(例如 [MiaoMiao Harem](https://civitai.com/models/934764))
 也可以使用：在生成设置中选择该检查点及其文本编码器。SDXL/Illustrious 可使用 `checkpoints` 中的任意
@@ -140,17 +153,17 @@ Studio 就能识别每个文件的模型系列并只显示匹配的文件。`too
 
 ### 可选功能
 
-| 功能 | 自定义节点 | 模型 |
-|---|---|---|
-| 标签自动补全和标签检查 | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)(只读取其 Danbooru 标签文件) | — |
-| WD14 标签分析(图像工具) | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 首次使用时由节点下载，例如 [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3) |
-| 背景透明化 | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)(其 requirements 会安装 `rembg`)、Asset Studio 节点包 | `isnet-anime` 首次使用时由 rembg 下载 |
-| 遮挡部位检测 | Asset Studio 节点包、ComfyUI Python 中的 `ultralytics`(由 Impact Subpack 安装) | [Anime NSFW Detection](https://civitai.com/models/1313556) 的 `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm` |
-| 人物遮罩(背景透明化的替代方式) | Asset Studio 节点包、`ultralytics` | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) 的 `person_yolov8n-seg.pt` → `ultralytics/segm` |
-| 放大 | Asset Studio 节点包 | 例如 [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4)、[4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models` |
-| 细节修复(脸、眼睛、嘴、手) | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)、[ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack)、Asset Studio 节点包 | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) 的 `face_yolov8m.pt`、`hand_yolov8s.pt` → `ultralytics/bbox`；[Eye Detailer/Segmentation](https://civitai.com/models/334668) 的 `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`；[sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
-| 视觉模型自动审核 | 本地 OpenAI 兼容服务器(例如 [LM Studio](https://lmstudio.ai/)) | 任选一个视觉语言模型 |
-| LoRA 训练 | — | 见 [LoRA 训练](#lora-训练) |
+| 功能                           | 自定义节点                                                                                                                                                                | 模型                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 标签自动补全和标签检查         | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)(只读取其 Danbooru 标签文件)                                                                        | —                                                                                                                                                                                                                                                                                                                                                  |
+| WD14 标签分析(图像工具)        | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)                                                                                               | 首次使用时由节点下载，例如 [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3)                                                                                                                                                                                                                                 |
+| 背景透明化                     | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)(其 requirements 会安装 `rembg`)、Asset Studio 节点包                                                    | `isnet-anime` 首次使用时由 rembg 下载                                                                                                                                                                                                                                                                                                              |
+| 遮挡部位检测                   | Asset Studio 节点包、ComfyUI Python 中的 `ultralytics`(由 Impact Subpack 安装)                                                                                            | [Anime NSFW Detection](https://civitai.com/models/1313556) 的 `ntd11_anime_nsfw_segm_v5-variant1.pt` → `ultralytics/segm`                                                                                                                                                                                                                          |
+| 人物遮罩(背景透明化的替代方式) | Asset Studio 节点包、`ultralytics`                                                                                                                                        | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) 的 `person_yolov8n-seg.pt` → `ultralytics/segm`                                                                                                                                                                                                                                        |
+| 放大                           | Asset Studio 节点包                                                                                                                                                       | 例如 [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4)、[4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models`                                                                                                                                                                                              |
+| 细节修复(脸、眼睛、嘴、手)     | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)、[ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack)、Asset Studio 节点包 | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) 的 `face_yolov8m.pt`、`hand_yolov8s.pt` → `ultralytics/bbox`；[Eye Detailer/Segmentation](https://civitai.com/models/334668) 的 `PitEyeDetailer-v2-seg.pt` → `ultralytics/segm`；[sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
+| 视觉模型自动审核               | 本地 OpenAI 兼容服务器(例如 [LM Studio](https://lmstudio.ai/))                                                                                                            | 任选一个视觉语言模型                                                                                                                                                                                                                                                                                                                               |
+| LoRA 训练                      | —                                                                                                                                                                         | 见 [LoRA 训练](#lora-训练)                                                                                                                                                                                                                                                                                                                         |
 
 Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中所示文件夹。Asset Studio 节点包就是在
 [安装](#安装)第 4 步中链接的 `comfy_nodes/asset_studio_nodes` 文件夹。遮挡处理本身(马赛克·模糊·纯色)不需要
@@ -160,15 +173,15 @@ Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中
 
 节点安装脚本会安装这些版本；其他版本也许可用，但未经验证。
 
-| 组件 | 版本 | 提交 | 许可证 |
-|---|---|---|---|
-| ComfyUI | 0.38.0 | — | GPL-3.0 |
-| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) | 1.1.1 | `66ae8b6` | MIT |
-| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 1.0.1 | `9e0a6e7` | MIT |
-| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) | 1.1.0 | `9d9f4be` | MIT |
-| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack) | 8.28.3 | `429d015` | GPL-3.0 |
-| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5 | `50c7b71` | AGPL-3.0 |
-| Python 包(由节点安装) | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | — | AGPL-3.0 · MIT · MIT |
+| 组件                                                                         | 版本                                                  | 提交      | 许可证               |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- | --------- | -------------------- |
+| ComfyUI                                                                      | 0.38.0                                                | —         | GPL-3.0              |
+| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)       | 1.1.1                                                 | `66ae8b6` | MIT                  |
+| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)  | 1.0.1                                                 | `9e0a6e7` | MIT                  |
+| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)            | 1.1.0                                                 | `9d9f4be` | MIT                  |
+| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)       | 8.28.3                                                | `429d015` | GPL-3.0              |
+| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5                                                 | `50c7b71` | AGPL-3.0             |
+| Python 包(由节点安装)                                                        | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | —         | AGPL-3.0 · MIT · MIT |
 
 ## LoRA 训练
 
@@ -189,6 +202,7 @@ Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中
 
    若 `uv sync` 还需要其他东西，请按 anima_lora 自己的 [Setup](https://github.com/sorryhyun/anima_lora#setup)
    操作(它使用 Python 3.13 和 CUDA 版 PyTorch，需要较新的 NVIDIA 驱动)。
+
 2. 应用 Asset Studio 的小补丁，让预处理使用你指定的模型文件，而不是 anima_lora 的 `models/` 文件夹:
 
    ```bat
@@ -211,14 +225,14 @@ Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中
 所有设置都在**设置**页面中修改，并保存在服务器的 `data/settings/` 中，因此同一台电脑上的所有浏览器看到
 的设置相同。
 
-| 项目 | 内容 |
-|---|---|
-| 常规 | 语言、主题、标签自动补全 |
-| ComfyUI 连接信息 | ComfyUI 的地址、文件夹和 Python |
-| Danbooru 标签数据 | 标签文件不在 ComfyUI-EasyUseAnima 中时的文件夹 |
-| LoRA 训练 | 训练工具文件夹、其 Python、LoRA 保存文件夹、训练用模型 |
-| GPU 使用 / GPU 等待条件 | 其他程序占用 GPU 时等待(剩余显存、程序名) |
-| VLM 服务器 / VLM 审核 | 可选的自动审核：服务器地址、模型、加载和卸载模型的命令(例如 LM Studio 的 `lms load` / `lms unload` / `lms ps`)，以及开关 |
+| 项目                    | 内容                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 常规                    | 语言、主题、标签自动补全                                                                                                 |
+| ComfyUI 连接信息        | ComfyUI 的地址、文件夹和 Python                                                                                          |
+| Danbooru 标签数据       | 标签文件不在 ComfyUI-EasyUseAnima 中时的文件夹                                                                           |
+| LoRA 训练               | 训练工具文件夹、其 Python、LoRA 保存文件夹、训练用模型                                                                   |
+| GPU 使用 / GPU 等待条件 | 其他程序占用 GPU 时等待(剩余显存、程序名)                                                                                |
+| VLM 服务器 / VLM 审核   | 可选的自动审核：服务器地址、模型、加载和卸载模型的命令(例如 LM Studio 的 `lms load` / `lms unload` / `lms ps`)，以及开关 |
 
 `config/models.example.json`(复制为 `data/settings/models.json`)用于指定共享模型文件夹和手动模型系列，
 大多数情况下不需要。
@@ -228,7 +242,7 @@ Civitai 上的检测模型是 ZIP 文件，请解压出 `.pt` 文件放到表中
 - `data/` 存放提示词库、审核结果、数据集、LoRA 记录和设置；`outputs/` 存放生成和处理后的图像。请备份
   这两个文件夹，它们都不包含在 git 仓库中。
 - 删除提示词会把它移到库的回收站，可从那里恢复。
-- `outputs/_lab/` 存放实验室图像，`outputs/_tools/` 存放图像工具的结果；图库会显示 `outputs/` 下的所有
+- `outputs/_lab/` 存放生成·对比图像，`outputs/_tools/` 存放图像工具的结果；图库会显示 `outputs/` 下的所有
   图像。
 
 ## 故障排除

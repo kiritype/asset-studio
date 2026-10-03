@@ -21,14 +21,14 @@ The **Jobs** menu queues characters × outfits × expressions × count in one go
 The **Anima** / **SDXL·IL** tabs choose the model family. Switching shows only models and pieces
 of that family.
 
-| Setting | Notes |
-|---|---|
-| Model | A diffusion model or checkpoint. `[checkpoint]` marks fine-tunes with their own text encoder. |
-| Text encoder · VAE · CLIP type | Needed for Anima. For a checkpoint-style fine-tune, pick its own text encoder. |
-| Sampler · scheduler · steps · CFG | As in ComfyUI. |
-| Width · height | For images you will train a LoRA on, square (for example 1536×1536) is recommended. |
-| Seed | -1 is random. **One fixed seed per character** uses one seed per character for all of that queueing. |
-| LoRA | LoRAs you add yourself. Trained and registered LoRAs are added automatically while **Apply registered LoRAs automatically** is on. |
+| Setting                           | Notes                                                                                                                              |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Model                             | A diffusion model or checkpoint. `[checkpoint]` marks fine-tunes with their own text encoder.                                      |
+| Text encoder · VAE · CLIP type    | Needed for Anima. For a checkpoint-style fine-tune, pick its own text encoder.                                                     |
+| Sampler · scheduler · steps · CFG | As in ComfyUI.                                                                                                                     |
+| Width · height                    | For images you will train a LoRA on, square (for example 1536×1536) is recommended.                                                |
+| Seed                              | -1 is random. **One fixed seed per character** uses one seed per character for all of that queueing.                               |
+| LoRA                              | LoRAs you add yourself. Trained and registered LoRAs are added automatically while **Apply registered LoRAs automatically** is on. |
 
 Save settings you use often with **Save new preset** and load them from **Settings preset**. To
 also keep the expression choice, composition and style, use **Combination presets** at the top.
@@ -42,8 +42,8 @@ applied automatically are listed as "Automatic LoRAs".
 ![Combination preview](/shots/en/04-jobs-preview.webp)
 
 - **Download workflow**: save this combination as a ComfyUI workflow file.
-- **Generate once with these settings** / **Open in Lab**: hand it to the lab to make a single
-  image or try other settings.
+- **Generate once with these settings** / **Open in Generate & compare**: open Generate & compare
+  to make one image or try other settings.
 - **Edit the prompt for this run only**: change the prompt for this queueing without touching the
   library.
 

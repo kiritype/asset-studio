@@ -6,6 +6,7 @@ import {sendToLab} from './lab.js';
 import {withTagComplete} from '../core/tag_input.js';
 import {createMaskEditor} from '../core/mask_editor.js';
 import {t, tr} from '../core/i18n.js';
+import {createPromptConverter} from './prompt_converter.js';
 
 const POLL_MS = 2000;
 const ACCEPT = '.png,.webp,.jpg,.jpeg,.zip';
@@ -105,6 +106,7 @@ export function createTools(ctx) {
   const detail = el('div', 'tl-detail');
   const toolPanel = el('aside', 'tl-tools');
   root.append(header, listPanel, detail, toolPanel);
+  const promptConverter = createPromptConverter(ctx, {onOpenLab: (draft) => sendToLab(ctx, draft)});
 
   const current = () => state.items.find((item) => item.id === state.current);
   const chosenIds = () => state.items.filter((i) => state.chosen.has(i.id)).map((i) => i.id);
@@ -435,6 +437,12 @@ export function createTools(ctx) {
   }
 
   function renderDetail() {
+    if (state.tab === 'prompt') {
+      root.classList.add('prompt-mode');
+      detail.replaceChildren(promptConverter.element);
+      return;
+    }
+    root.classList.remove('prompt-mode');
     const item = current();
     if (!item) {
       detail.replaceChildren(el('p', 'tl-muted', t('tools.choose_an_image_on_the_left')));
@@ -501,6 +509,19 @@ export function createTools(ctx) {
               source: {label: t('tools.image_tools', [item.name])},
             }),
           ),
+          btn(t('prompt_converter.open_in_prompt_format'), () => {
+            if (!leaveEditor()) return;
+            state.tab = 'prompt';
+            promptConverter.setPrompts({
+              positive: found.positive,
+              negative: found.negative || '',
+              settings: found.settings || null,
+              family: found.settings?.family || '',
+              label: item.name,
+            });
+            renderTools();
+            renderDetail();
+          }),
         );
       info.append(head);
       if (found.positive) {
@@ -1332,6 +1353,7 @@ export function createTools(ctx) {
   function renderTools() {
     const tabs = el('div', 'tl-tabs');
     for (const [key, text] of [
+      ['prompt', t('prompt_converter.tab')],
       ['convert', t('tools.webp_conversion')],
       ['tag', t('tools.tagging')],
       ['post', t('tools.post_processing')],
@@ -1348,18 +1370,20 @@ export function createTools(ctx) {
       tab.setAttribute('aria-pressed', String(state.tab === key));
       tabs.append(tab);
     }
-    toolPanel.replaceChildren(
-      tabs,
-      el('p', 'tl-muted', t('common.selected', [chosenIds().length])),
-      {
-        convert: convertForm,
-        tag: tagForm,
-        post: postForm,
-        censor: censorForm,
-        alpha: alphaForm,
-        inpaint: inpaintForm,
-      }[state.tab](),
-    );
+    root.classList.toggle('prompt-mode', state.tab === 'prompt');
+    toolPanel.replaceChildren(tabs);
+    if (state.tab !== 'prompt')
+      toolPanel.append(
+        el('p', 'tl-muted', t('common.selected', [chosenIds().length])),
+        {
+          convert: convertForm,
+          tag: tagForm,
+          post: postForm,
+          censor: censorForm,
+          alpha: alphaForm,
+          inpaint: inpaintForm,
+        }[state.tab](),
+      );
   }
 
   // ---- loading -----------------------------------------------------------------------
@@ -1406,8 +1430,31 @@ export function createTools(ctx) {
     }, POLL_MS);
   }
 
-  async function enter() {
+  async function enter(params = new URLSearchParams()) {
+    const supplied = params instanceof URLSearchParams ? params : new URLSearchParams(params);
+    const requestedTab = supplied.get('tab');
+    if (requestedTab === 'prompt') state.tab = 'prompt';
+    const focusHandoff = (() => {
+      try {
+        const data = JSON.parse(
+          sessionStorage.getItem('asset-studio-tools-gallery-handoff') || 'null',
+        );
+        sessionStorage.removeItem('asset-studio-tools-gallery-handoff');
+        return data;
+      } catch {
+        return null;
+      }
+    })();
+    if (focusHandoff?.paths?.length && requestedTab !== 'prompt') state.tab = 'convert';
     await loadItems();
+    if (focusHandoff?.paths?.length) {
+      const path = focusHandoff.paths[0];
+      const item = state.items.find(
+        (candidate) => candidate.source === 'gallery' && candidate.path === path,
+      );
+      if (item) await show(item.id);
+    }
+    if (state.tab === 'prompt') await promptConverter.enter();
     ctx
       .api('/api/tools/tagger')
       .then((info) => {

@@ -20,16 +20,20 @@ What it does:
   queues them. Anima and SDXL/Illustrious graphs are both supported.
 - **Gallery**: review images (pass / fail), filter by work, character, outfit,
   expression or model, regenerate with a new seed, export approved images as a ZIP.
-- **Lab**: try one prompt with several seeds or one changing setting (CFG, steps,
-  sampler, scheduler, CLIP skip, LoRA strength) and compare results side by side or
-  with a slider.
 - **Image tools**: upload images or bring them from the gallery, read how they were made
   (Asset Studio record, ComfyUI graph, A1111 parameters, EXIF), tag them with WD14,
   remove the background, upscale, redraw faces and hands (detailer), censor with a mask
-  you can paint, and convert to WebP.
+  you can paint, convert to WebP, and convert prompt text between NovelAI V5, Anima and
+  SDXL/Illustrious (ComfyUI) formats.
 - **LoRA**: build a dataset from approved images, edit captions, train with
   [anima_lora](https://github.com/sorryhyun/anima_lora), register the result and have it
   applied automatically when you generate that character.
+- **Generate & compare**: the Single generation tab makes one image; Comparison varies only
+  seeds, one setting or artist candidates. Enter one artist candidate per line, including
+  mixes; turn on **Include a no-artist baseline** to add a candidate without artist tags. The common prompt stays in each candidate
+  and existing artist tags are not removed, so leave compared artists out of the common prompt.
+  Candidates in one row share a seed. Compare up to 12 candidates and 16 seeds, with at most
+  48 images per run.
 
 Images are saved as PNG with the ComfyUI `prompt` and `workflow` embedded, so ComfyUI can
 open any result as a workflow.
@@ -68,6 +72,7 @@ texts are machine translations; corrections are welcome.
    ```
 
    Without this file the launcher uses `pythonw` from `PATH`.
+
 4. Optional features need ComfyUI custom nodes and models.
    `tools/install_comfy_nodes.py` installs the custom nodes at the
    [tested versions](#tested-versions) and links Asset Studio's node pack into ComfyUI. Run it with
@@ -125,12 +130,27 @@ The server listens on 127.0.0.1 only. Everything you make stays in the `data/` a
 
 ### Image tools at a glance
 
+- **Prompt format** converts positive and negative prompts directly or from each selected
+  gallery image's own metadata. Explicit `@name` and `artist:name` forms identify artist tags;
+  bare names need to be in an optional artist list. Weight conversion is approximate, natural
+  language and unknown ordinary tags stay as written without a warning. Unsupported complex syntax
+  (including nested forms it cannot convert), malformed syntax and nonpositive weights are
+  preserved with a warning. For example,
+  NovelAI `1.2::tag::` becomes ComfyUI `(tag:1.2)`, while a simple
+  ComfyUI `(tag:1.2)` becomes NovelAI numeric weighting; balanced `{tag}` and `[tag]` groups map
+  to explicit ComfyUI weights. Weight numbers have different effects across models, so adjust
+  converted prompts by hand. See
+  [NovelAI's weight syntax](https://docs.novelai.net/en/image/strengthening-weakening/) and
+  [Anima prompting](https://huggingface.co/circlestone-labs/Anima#prompting). The converter does
+  not extract artist names from natural language or change quality tags. Copy the result or send
+  it to Generate & compare (`/lab`); it does not generate images with NovelAI or connect to an
+  external AI service. Source images are never changed.
 - **WebP conversion**: quality, lossless, resize. "Keep metadata" is off by default, so
   shared files carry no prompt or workflow.
 - **Tagging**: WD14 tags compared with the image's prompt (matches, only in the image,
-  not seen in the image). Keep a list of excluded tags, copy tags, open them in the lab,
-  or export the chosen images' tags as TXT (LoRA captions) or JSON. Chosen images can be
-  downloaded as one ZIP.
+  not seen in the image). Keep a list of excluded tags, copy tags, open the image or send its
+  tags to Generate & compare, or export the chosen images' tags as TXT (LoRA captions) or JSON.
+  Chosen images can be downloaded as one ZIP.
 - **Post-processing**: upscale and detailer. Upscaling drops transparency, so remove the
   background after upscaling, not before.
 - **Censor**: (1) optionally detect areas, (2) fix the red mask with the brush and the
@@ -153,11 +173,11 @@ Stability Matrix).
 
 ### Generation (required)
 
-| What | Where to get it | ComfyUI folder |
-|---|---|---|
+| What                                                                                            | Where to get it                                                                                                                                                        | ComfyUI folder     |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | Anima diffusion model, e.g. `anima-aesthetic-v1.1.safetensors` or `anima-base-v1.0.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/diffusion_models) (also on [Civitai](https://civitai.com/models/2458426)) | `diffusion_models` |
-| Text encoder `qwen_3_06b_base.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders) | `text_encoders` |
-| VAE `qwen_image_vae.safetensors` | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae) | `vae` |
+| Text encoder `qwen_3_06b_base.safetensors`                                                      | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders)                                                            | `text_encoders`    |
+| VAE `qwen_image_vae.safetensors`                                                                | [circlestone-labs/Anima](https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae)                                                                      | `vae`              |
 
 Anima fine-tunes that ship as a checkpoint with their own text encoder (for example
 [MiaoMiao Harem](https://civitai.com/models/934764)) also work: pick the checkpoint and its
@@ -171,17 +191,17 @@ default).
 
 ### Optional features
 
-| Feature | Custom nodes | Models |
-|---|---|---|
-| Tag autocomplete and tag check | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) (only its Danbooru tag files are read) | — |
-| WD14 tagging (image tools) | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | Downloaded by the node on first use, e.g. [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3) |
-| Background removal | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) (its requirements install `rembg`) and Asset Studio's node pack | `isnet-anime` is downloaded by rembg on first use |
-| Censor area detection | Asset Studio's node pack, `ultralytics` in ComfyUI's Python (installed by Impact Subpack) | `ntd11_anime_nsfw_segm_v5-variant1.pt` from [Anime NSFW Detection](https://civitai.com/models/1313556) → `ultralytics/segm` |
-| Person mask (alternative background removal) | Asset Studio's node pack, `ultralytics` | `person_yolov8n-seg.pt` from [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) → `ultralytics/segm` |
-| Upscale | Asset Studio's node pack | e.g. [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4), [4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models` |
-| Detailer (face, eyes, mouth, hands) | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack), [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack), Asset Studio's node pack | `face_yolov8m.pt`, `hand_yolov8s.pt` from [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) → `ultralytics/bbox`; `PitEyeDetailer-v2-seg.pt` from [Eye Detailer/Segmentation](https://civitai.com/models/334668) → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
-| Automatic review with a vision model | A local OpenAI-compatible server (for example [LM Studio](https://lmstudio.ai/)) | A vision-language model of your choice |
-| LoRA training | — | See [LoRA training](#lora-training) |
+| Feature                                      | Custom nodes                                                                                                                                                                   | Models                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tag autocomplete and tag check               | [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) (only its Danbooru tag files are read)                                                                  | —                                                                                                                                                                                                                                                                                                                                                      |
+| WD14 tagging (image tools)                   | [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)                                                                                                    | Downloaded by the node on first use, e.g. [wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3)                                                                                                                                                                                                                      |
+| Background removal                           | [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) (its requirements install `rembg`) and Asset Studio's node pack                                              | `isnet-anime` is downloaded by rembg on first use                                                                                                                                                                                                                                                                                                      |
+| Censor area detection                        | Asset Studio's node pack, `ultralytics` in ComfyUI's Python (installed by Impact Subpack)                                                                                      | `ntd11_anime_nsfw_segm_v5-variant1.pt` from [Anime NSFW Detection](https://civitai.com/models/1313556) → `ultralytics/segm`                                                                                                                                                                                                                            |
+| Person mask (alternative background removal) | Asset Studio's node pack, `ultralytics`                                                                                                                                        | `person_yolov8n-seg.pt` from [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) → `ultralytics/segm`                                                                                                                                                                                                                                          |
+| Upscale                                      | Asset Studio's node pack                                                                                                                                                       | e.g. [2x-AnimeSharpV4](https://huggingface.co/Kim2091/2x-AnimeSharpV4), [4x-UltraSharp](https://huggingface.co/Kim2091/UltraSharp) → `upscale_models`                                                                                                                                                                                                  |
+| Detailer (face, eyes, mouth, hands)          | [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack), [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack), Asset Studio's node pack | `face_yolov8m.pt`, `hand_yolov8s.pt` from [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) → `ultralytics/bbox`; `PitEyeDetailer-v2-seg.pt` from [Eye Detailer/Segmentation](https://civitai.com/models/334668) → `ultralytics/segm`; [sam_vit_b_01ec64.pth](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) → `sams` |
+| Automatic review with a vision model         | A local OpenAI-compatible server (for example [LM Studio](https://lmstudio.ai/))                                                                                               | A vision-language model of your choice                                                                                                                                                                                                                                                                                                                 |
+| LoRA training                                | —                                                                                                                                                                              | See [LoRA training](#lora-training)                                                                                                                                                                                                                                                                                                                    |
 
 Civitai detector downloads are ZIP files; extract the `.pt` file into the folder shown.
 Asset Studio's node pack is the `comfy_nodes/asset_studio_nodes` folder linked in step 4
@@ -192,15 +212,15 @@ automatic detection does.
 
 The node installer uses these versions; others may work but were not tested.
 
-| Component | Version | Commit | License |
-|---|---|---|---|
-| ComfyUI | 0.38.0 | — | GPL-3.0 |
-| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima) | 1.1.1 | `66ae8b6` | MIT |
-| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger) | 1.0.1 | `9e0a6e7` | MIT |
-| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials) | 1.1.0 | `9d9f4be` | MIT |
-| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack) | 8.28.3 | `429d015` | GPL-3.0 |
-| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5 | `50c7b71` | AGPL-3.0 |
-| Python packages (installed by the nodes) | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | — | AGPL-3.0 · MIT · MIT |
+| Component                                                                    | Version                                               | Commit    | License              |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- | --------- | -------------------- |
+| ComfyUI                                                                      | 0.38.0                                                | —         | GPL-3.0              |
+| [ComfyUI-EasyUseAnima](https://github.com/n0va39/ComfyUI-EasyUseAnima)       | 1.1.1                                                 | `66ae8b6` | MIT                  |
+| [ComfyUI-WD14-Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)  | 1.0.1                                                 | `9e0a6e7` | MIT                  |
+| [ComfyUI_essentials](https://github.com/cubiq/ComfyUI_essentials)            | 1.1.0                                                 | `9d9f4be` | MIT                  |
+| [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)       | 8.28.3                                                | `429d015` | GPL-3.0              |
+| [ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack) | 1.3.5                                                 | `50c7b71` | AGPL-3.0             |
+| Python packages (installed by the nodes)                                     | ultralytics 8.4.150, rembg 2.0.85, onnxruntime 1.30.0 | —         | AGPL-3.0 · MIT · MIT |
 
 ## LoRA training
 
@@ -223,6 +243,7 @@ environment. It is a separate install:
    Follow anima_lora's own [Setup](https://github.com/sorryhyun/anima_lora#setup) if
    `uv sync` needs more (it uses Python 3.13 and a CUDA build of PyTorch, so a recent
    NVIDIA driver is required).
+
 2. Apply Asset Studio's small patch, which lets preprocessing use the model files you
    choose instead of anima_lora's `models/` folder:
 
@@ -250,14 +271,14 @@ LoRA trains, new images are not generated; queued images continue afterwards.
 Everything is set on the **Settings** page and stored in `data/settings/` on the server,
 so every browser on the PC sees the same settings.
 
-| Section | What it holds |
-|---|---|
-| General | Language, theme, tag autocomplete |
-| ComfyUI connection | Address, folder and Python of ComfyUI |
-| Danbooru tag data | Folder of the tag files when they are not in ComfyUI-EasyUseAnima |
-| LoRA training | Trainer folder, its Python, LoRA output folder, training models |
-| GPU use / GPU wait rules | Wait while other programs use the GPU (free VRAM, program names) |
-| VLM server / VLM review | Optional automatic review: server address, model, the commands that load and unload the model (for example LM Studio's `lms load` / `lms unload` / `lms ps`), and the on/off switch |
+| Section                  | What it holds                                                                                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General                  | Language, theme, tag autocomplete                                                                                                                                                   |
+| ComfyUI connection       | Address, folder and Python of ComfyUI                                                                                                                                               |
+| Danbooru tag data        | Folder of the tag files when they are not in ComfyUI-EasyUseAnima                                                                                                                   |
+| LoRA training            | Trainer folder, its Python, LoRA output folder, training models                                                                                                                     |
+| GPU use / GPU wait rules | Wait while other programs use the GPU (free VRAM, program names)                                                                                                                    |
+| VLM server / VLM review  | Optional automatic review: server address, model, the commands that load and unload the model (for example LM Studio's `lms load` / `lms unload` / `lms ps`), and the on/off switch |
 
 `config/models.example.json` (copy to `data/settings/models.json`) sets a shared model
 folder and manual model families; most setups do not need it.
@@ -268,7 +289,7 @@ folder and manual model families; most setups do not need it.
   `outputs/` holds generated and processed images. Back up both folders; neither is part
   of the git repository.
 - Deleting prompts moves them to the library trash, from where they can be restored.
-- `outputs/_lab/` holds lab images and `outputs/_tools/` image-tool results; the gallery
+- `outputs/_lab/` holds Generate & compare images and `outputs/_tools/` image-tool results; the gallery
   shows every image under `outputs/`.
 
 ## Troubleshooting

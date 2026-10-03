@@ -25,6 +25,9 @@ Use ← / → to move and **View at 100%** for full size.
 
 Review quickly from the keyboard: **P** pass, **F** fail, **U** unreviewed.
 
+Press **Send to image tools** in the list or image view to open that image in Image tools. The image
+view also has a shortcut to open the **Prompt format** tab with the image's recorded prompt.
+
 ## Review and adoption
 
 Tick **Select** on the cards and press **Pass selected** or **Fail selected** to judge many at once.
@@ -48,5 +51,5 @@ so, and **Export without the missing ones** downloads what is there.
 
 ## Sending to the image tools
 
-Send the chosen images to the [image tools](./tools) for tagging, inpainting, background removal
-or censoring.
+Send the chosen images to the [image tools](./tools) for prompt-format conversion, tagging,
+inpainting, background removal or censoring.

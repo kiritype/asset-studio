@@ -12,18 +12,18 @@ models and nodes you need, see the [README](https://github.com/kiritype/asset-st
 
 ```
 Prompt library → generate images → review in the gallery → train a LoRA → generate again with it
-                                     ↘ image tools (tags, inpaint, background removal, censor)
+                                     ↘ image tools (prompt formats, tags, inpaint, background removal, censor)
 ```
 
-| Menu | What it does |
-|---|---|
-| Prompts | Create and edit prompt pieces: works, characters, outfits, expressions and more. |
-| Jobs | Pick characters × outfits × expressions × count and queue them. |
-| Lab | Try one prompt with several seeds or setting values and compare. |
-| Image tools | Read metadata, tag, inpaint, remove backgrounds, censor, convert to WebP. |
-| LoRA | Build a dataset from passed images, train, and register the result. |
-| Gallery | Browse generated images and review them as pass or fail. |
-| Settings | Language and theme, ComfyUI connection, LoRA training, GPU rules. |
+| Menu               | What it does                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| Prompts            | Create and edit prompt pieces: works, characters, outfits, expressions and more.                  |
+| Jobs               | Pick characters × outfits × expressions × count and queue them.                                   |
+| Gallery            | Browse generated images and review them as pass or fail.                                          |
+| Image tools        | Convert prompt formats, read metadata, tag, inpaint, remove backgrounds, censor, convert to WebP. |
+| LoRA               | Build a dataset from passed images, train, and register the result.                               |
+| Generate & compare | Make one image or compare seeds, settings and artist candidates.                                  |
+| Settings           | Language and theme, ComfyUI connection, LoRA training, GPU rules.                                 |
 
 The ComfyUI connection and the queue button are always at the top right.
 
