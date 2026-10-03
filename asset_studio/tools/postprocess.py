@@ -117,9 +117,13 @@ def check_options(op, options, info):
             'steps': _number(options, 'steps', 20, 1, 60, int),
         }
     if op == 'inpaint':
+        # A prompt left out (None) is the image's own; an empty one stays empty.
         prompts = {}
         for key in ('positive', 'negative'):
-            value = options.get(key, '')
+            value = options.get(key)
+            if value is None:
+                prompts[key] = None
+                continue
             if not isinstance(value, str) or len(value) > 8000:
                 raise ValueError(
                     Msg(
@@ -396,7 +400,9 @@ class PostprocessMixin:
                 sources[item['id']] = {
                     'settings': settings,
                     'positive': options.get('positive') or record['positive'],
-                    'negative': options.get('negative') or record.get('negative', ''),
+                    'negative': record.get('negative', '')
+                    if options.get('negative') is None
+                    else options['negative'],
                     'seed': secrets.randbits(32),
                 }
             if missing:
@@ -562,7 +568,13 @@ class PostprocessMixin:
                     image = image.convert('RGB')
                     image.putalpha(source.getchannel('A'))
         return self._store_result(
-            item, image, job['post_op'], job['post_options'], graph_used, job['id']
+            item,
+            image,
+            job['post_op'],
+            job['post_options'],
+            graph_used,
+            job['id'],
+            made=job.get('post_source'),
         )
 
     def apply_censor(self, body):
@@ -627,7 +639,8 @@ class PostprocessMixin:
             return None, None
         return path, meta
 
-    def _store_result(self, item, image, op, options, graph_used, job_id):
+    def _store_result(self, item, image, op, options, graph_used, job_id, made=None):
+        """``made``: the prompts and settings a redraw (detailer, inpaint) used."""
         source_path, meta = self._asset_source(item)
         if source_path:
             # Next to the source with its record, so a pass in review adopts it.
@@ -682,6 +695,15 @@ class PostprocessMixin:
                 'image_size': list(image.size),
                 'workflow': graph_used,
             }
+            # The result records the prompts and settings it was redrawn with, or else
+            # those of its source, so it can be redrawn (detailer, inpaint) again.
+            made = made or self.tools.analyze(item['id']).get('studio') or {}
+            if made.get('positive') and isinstance(made.get('settings'), dict):
+                record.update(
+                    positive=made['positive'],
+                    negative=made.get('negative', ''),
+                    settings=copy.deepcopy(made['settings']),
+                )
             embedded = {k: v for k, v in record.items() if k != 'workflow'}
         info = PngImagePlugin.PngInfo()
         if graph_used:
