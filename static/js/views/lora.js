@@ -145,8 +145,11 @@ export function createLora(ctx) {
     if (dataset) {
       state.outfit = dataset.outfit_set_id;
       state.chosen = new Set(dataset.items.map((item) => item.path));
+      // A name the server chose (``{outfit} dataset``) arrives as a message to translate.
+      const shown = tr(dataset.name) || '';
       state.draft = {
-        name: dataset.name || '',
+        name: shown,
+        shownName: shown,
         character: dataset.triggers?.character || '',
         outfit: dataset.triggers?.outfit || '',
       };
@@ -171,7 +174,11 @@ export function createLora(ctx) {
         ...who(),
         id: state.dataset || undefined,
         outfit_set_id: state.outfit,
-        name: state.draft.name.trim() || undefined,
+        // An untouched name is left to the server, which keeps the one it has.
+        name:
+          state.draft.name === state.draft.shownName
+            ? undefined
+            : state.draft.name.trim() || undefined,
         triggers: Object.keys(triggers).length ? triggers : undefined,
         paths,
       });
@@ -237,7 +244,7 @@ export function createLora(ctx) {
         ['', t('lora.new_dataset')],
         ...state.datasets.map((d) => [
           d.id,
-          t('lora.images', [d.id, d.name || '', d.items.length]),
+          t('lora.images', [d.id, tr(d.name) || '', d.items.length]),
         ]),
       ],
       state.dataset,
@@ -446,7 +453,7 @@ export function createLora(ctx) {
       train.dataset = state.datasets.at(-1)?.id || '';
     const form = el('div', 'lr-grid2');
     const dataset = select(
-      state.datasets.map((d) => [d.id, t('lora.images', [d.id, d.name || '', d.items.length])]),
+      state.datasets.map((d) => [d.id, t('lora.images', [d.id, tr(d.name) || '', d.items.length])]),
       train.dataset,
     );
     dataset.addEventListener('change', () => (train.dataset = dataset.value));
