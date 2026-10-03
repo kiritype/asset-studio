@@ -640,18 +640,33 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_result_of_an_uploaded_image_keeps_its_record_for_another_redraw(self):
         item, mask, inpaint = self.recorded_for_inpaint()
-        inpaint(item['id'])
-        job = self.app.jobs[-1]
-        nodes = self.app.post_graph(job)
-        out = io.BytesIO()
-        Image.new('RGB', tuple(job['post_crop']['size']), 'white').save(out, 'PNG')
-        self.app.save_post(job, out.getvalue(), nodes)
-        result = next(i for i in self.tools.items if i.get('parent') == item['id'])
-        self.assertEqual(self.tools.analyze(result['id'])['prompt']['positive'], '1girl, smile')
-        self.tools.set_mask(result['id'], mask, 'edited', 'inpaint')
-        again = inpaint(result['id'])
-        self.assertEqual(again['post_source']['positive'], '1girl, smile')
-        self.assertEqual(again['post_source']['negative'], 'blur')
+
+        def redraw(item_id, **options):
+            inpaint(item_id, **options)
+            job = self.app.jobs[-1]
+            nodes = self.app.post_graph(job)
+            out = io.BytesIO()
+            Image.new('RGB', tuple(job['post_crop']['size']), 'white').save(out, 'PNG')
+            self.app.save_post(job, out.getvalue(), nodes)
+            result = next(i for i in self.tools.items if i.get('parent') == item_id)
+            self.tools.set_mask(result['id'], mask, 'edited', 'inpaint')
+            return result
+
+        # The result records the prompts it was redrawn with, not those of its source.
+        first = redraw(item['id'], positive='1girl, open mouth', negative='')
+        prompt = self.tools.analyze(first['id'])['prompt']
+        self.assertEqual((prompt['positive'], prompt['negative']), ('1girl, open mouth', ''))
+        again = inpaint(first['id'])
+        self.assertEqual(again['post_source']['positive'], '1girl, open mouth')
+        self.assertEqual(again['post_source']['negative'], '')
+        used = self.app.jobs[-2]['post_source']['settings']
+        self.assertEqual(again['post_source']['settings'], used)
+
+        # Without a redraw of its own (upscale, alpha, ...) a result keeps its source's.
+        self.app._store_result(first, Image.new('RGB', (64, 64)), 'upscale', {}, None, None)
+        upscaled = next(i for i in self.tools.items if i.get('parent') == first['id'])
+        kept = self.tools.analyze(upscaled['id'])['prompt']['positive']
+        self.assertEqual(kept, '1girl, open mouth')
 
 if __name__ == '__main__':
     unittest.main()

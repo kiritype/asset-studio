@@ -568,7 +568,13 @@ class PostprocessMixin:
                     image = image.convert('RGB')
                     image.putalpha(source.getchannel('A'))
         return self._store_result(
-            item, image, job['post_op'], job['post_options'], graph_used, job['id']
+            item,
+            image,
+            job['post_op'],
+            job['post_options'],
+            graph_used,
+            job['id'],
+            made=job.get('post_source'),
         )
 
     def apply_censor(self, body):
@@ -633,7 +639,8 @@ class PostprocessMixin:
             return None, None
         return path, meta
 
-    def _store_result(self, item, image, op, options, graph_used, job_id):
+    def _store_result(self, item, image, op, options, graph_used, job_id, made=None):
+        """``made``: the prompts and settings a redraw (detailer, inpaint) used."""
         source_path, meta = self._asset_source(item)
         if source_path:
             # Next to the source with its record, so a pass in review adopts it.
@@ -688,9 +695,9 @@ class PostprocessMixin:
                 'image_size': list(image.size),
                 'workflow': graph_used,
             }
-            # The prompts and settings the source was made with carry over, so the result
-            # can be redrawn (detailer, inpaint) again like its source.
-            made = self.tools.analyze(item['id']).get('studio') or {}
+            # The result records the prompts and settings it was redrawn with, or else
+            # those of its source, so it can be redrawn (detailer, inpaint) again.
+            made = made or self.tools.analyze(item['id']).get('studio') or {}
             if made.get('positive') and isinstance(made.get('settings'), dict):
                 record.update(
                     positive=made['positive'],
