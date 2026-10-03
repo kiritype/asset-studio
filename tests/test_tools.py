@@ -638,6 +638,20 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(cleared['post_source']['negative'], '')
         self.assertEqual(cleared['post_source']['positive'], '1girl, open mouth')
 
+    def test_result_of_an_uploaded_image_keeps_its_record_for_another_redraw(self):
+        item, mask, inpaint = self.recorded_for_inpaint()
+        inpaint(item['id'])
+        job = self.app.jobs[-1]
+        nodes = self.app.post_graph(job)
+        out = io.BytesIO()
+        Image.new('RGB', tuple(job['post_crop']['size']), 'white').save(out, 'PNG')
+        self.app.save_post(job, out.getvalue(), nodes)
+        result = next(i for i in self.tools.items if i.get('parent') == item['id'])
+        self.assertEqual(self.tools.analyze(result['id'])['prompt']['positive'], '1girl, smile')
+        self.tools.set_mask(result['id'], mask, 'edited', 'inpaint')
+        again = inpaint(result['id'])
+        self.assertEqual(again['post_source']['positive'], '1girl, smile')
+        self.assertEqual(again['post_source']['negative'], 'blur')
 
 if __name__ == '__main__':
     unittest.main()

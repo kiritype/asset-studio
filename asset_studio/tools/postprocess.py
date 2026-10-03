@@ -688,6 +688,15 @@ class PostprocessMixin:
                 'image_size': list(image.size),
                 'workflow': graph_used,
             }
+            # The prompts and settings the source was made with carry over, so the result
+            # can be redrawn (detailer, inpaint) again like its source.
+            made = self.tools.analyze(item['id']).get('studio') or {}
+            if made.get('positive') and isinstance(made.get('settings'), dict):
+                record.update(
+                    positive=made['positive'],
+                    negative=made.get('negative', ''),
+                    settings=copy.deepcopy(made['settings']),
+                )
             embedded = {k: v for k, v in record.items() if k != 'workflow'}
         info = PngImagePlugin.PngInfo()
         if graph_used:
