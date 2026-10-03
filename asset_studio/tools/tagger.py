@@ -11,7 +11,7 @@ import uuid
 import zipfile
 from pathlib import PurePosixPath
 
-from ..i18n import Msg
+from ..i18n import Msg, message_of
 from ..util import now
 
 NODE = 'WD14Tagger|pysssss'
@@ -105,7 +105,7 @@ class TaggerMixin:
                 'error': Msg(
                     'server.tagger.wd14_tagger_node_not_found',
                     'WD14 tagger node not found: {error}',
-                    error=error,
+                    error=message_of(error),
                 ),
                 'exclude': exclude,
             }

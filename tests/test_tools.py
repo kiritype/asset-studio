@@ -445,6 +445,21 @@ class WorkspaceTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.zip([])
 
+    def test_tool_status_without_comfyui_is_still_json(self):
+        from asset_studio.i18n import wire
+
+        def offline(path, body=None, raw=False):
+            raise RuntimeError('connection refused')
+
+        self.app.comfy.request = offline
+        for info in (self.app.tagger_info(), self.app.postprocess_info()):
+            self.assertFalse(info['available'])
+            self.assertIn('connection refused', info['error'])
+            self.assertEqual(
+                json.loads(json.dumps(wire(info)))['error']['params'],
+                {'error': 'connection refused'},
+            )
+
     def test_tag_export_drops_excluded_tags(self):
         from asset_studio import settings_api
 

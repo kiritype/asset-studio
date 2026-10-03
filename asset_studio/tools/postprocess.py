@@ -21,7 +21,7 @@ from PIL import Image, ImageChops, ImageOps, PngImagePlugin
 
 from ..gallery.listing import is_asset_path
 from ..generation.workflow import build_workflow, validate_settings
-from ..i18n import Msg
+from ..i18n import Msg, message_of
 from ..util import atomic_json, now, replace_file
 from . import censor
 
@@ -324,7 +324,7 @@ class PostprocessMixin:
                 'error': Msg(
                     'server.postprocess.cannot_connect_to_comfyui',
                     'Cannot connect to ComfyUI: {error}',
-                    error=error,
+                    error=message_of(error),
                 ),
             }
         prefix = next((p for p in PREFIXES if f'{p}Upscale' in info), None)
