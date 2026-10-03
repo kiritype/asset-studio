@@ -12,10 +12,15 @@ from ..lora.apply import merge_loras
 from ..util import atomic_json, code, now
 from .workflow import validate_settings
 
+FINISHED = frozenset({'completed', 'failed', 'cancelled', 'interrupted'})
+# The page gets every unfinished job but only the latest finished ones.
+FINISHED_SHOWN = 1000
+
 
 class JobQueueMixin:
     """Queue operations of ``Studio``. Expects ``jobs``, ``paused``, ``lock``, ``store``,
-    ``comfy``, ``library``, ``validation``, ``root`` and ``state_path`` on the instance."""
+    ``comfy``, ``library``, ``validation``, ``tools``, ``root`` and ``state_path`` on the
+    instance."""
 
     def persist(self):
         atomic_json(
@@ -24,11 +29,14 @@ class JobQueueMixin:
 
     def public_jobs(self):
         with self.lock:
+            finished = [i for i, j in enumerate(self.jobs) if j['status'] in FINISHED]
+            hidden = set(finished[:-FINISHED_SHOWN])
             return {
                 'paused': self.paused,
                 'jobs': [
                     {k: v for k, v in j.items() if k not in ('snapshot', 'workflow')}
-                    for j in self.jobs[-1000:]
+                    for i, j in enumerate(self.jobs)
+                    if i not in hidden
                 ],
             }
 
@@ -205,12 +213,11 @@ class JobQueueMixin:
 
     def remove_finished(self, job_id=None):
         with self.lock:
-            finished = {'completed', 'failed', 'cancelled', 'interrupted'}
             if job_id is not None:
                 job = next((j for j in self.jobs if j['id'] == job_id), None)
                 if job is None:
                     raise ValueError(Msg('server.queue.job_not_found', 'Job not found.'))
-                if job['status'] not in finished:
+                if job['status'] not in FINISHED:
                     raise ValueError(
                         Msg(
                             'server.queue.only_finished_jobs_can_be_cleared',
@@ -221,7 +228,7 @@ class JobQueueMixin:
             removed = [
                 j
                 for j in self.jobs
-                if j['status'] in finished and (job_id is None or j['id'] == job_id)
+                if j['status'] in FINISHED and (job_id is None or j['id'] == job_id)
             ]
             if removed:
                 atomic_json(
@@ -239,6 +246,10 @@ class JobQueueMixin:
                 except Exception:
                     self.jobs = previous
                     raise
+                # A job's inpaint mask copy goes with the last job using it (retries share it).
+                self.tools.prune_job_masks(
+                    {j['post_mask'] for j in self.jobs if j.get('post_mask')}
+                )
             return {'ok': True, 'removed': len(removed)}
 
     def retry(self, job_id):
@@ -279,6 +290,7 @@ class JobQueueMixin:
                     'post_options',
                     'post_prefix',
                     'post_source',
+                    'post_mask',
                 )
             }
             job.update(id=uuid.uuid4().hex, status='queued', created_at=now())

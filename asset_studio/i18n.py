@@ -16,6 +16,11 @@ class Msg(str):
     params: dict
 
     def __new__(cls, key: str, text: str, /, **params):
+        # An exception becomes its message so the params stay JSON for the page.
+        params = {
+            name: message_of(value) if isinstance(value, BaseException) else value
+            for name, value in params.items()
+        }
         shown = {name: str(value) for name, value in params.items()}
         self = super().__new__(cls, text.format(**shown) if params else text)
         self.key = key

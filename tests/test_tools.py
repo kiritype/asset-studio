@@ -445,6 +445,21 @@ class WorkspaceTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.zip([])
 
+    def test_tool_status_without_comfyui_is_still_json(self):
+        from asset_studio.i18n import wire
+
+        def offline(path, body=None, raw=False):
+            raise RuntimeError('connection refused')
+
+        self.app.comfy.request = offline
+        for info in (self.app.tagger_info(), self.app.postprocess_info()):
+            self.assertFalse(info['available'])
+            self.assertIn('connection refused', info['error'])
+            self.assertEqual(
+                json.loads(json.dumps(wire(info)))['error']['params'],
+                {'error': 'connection refused'},
+            )
+
     def test_tag_export_drops_excluded_tags(self):
         from asset_studio import settings_api
 
@@ -527,6 +542,64 @@ class WorkspaceTest(unittest.TestCase):
         job['post_options'] = {**job['post_options'], 'area': 'full'}
         self.app.post_graph(job)
         self.assertNotIn('post_crop', job)
+
+
+    def test_inpaint_keeps_the_mask_it_was_queued_with(self):
+        from asset_studio.generation.workflow import validate_settings
+        from asset_studio.tools.postprocess import check_options
+
+        item = self.tools.upload('pic.png', png('blue', size=(256, 256)))['added'][0]
+        chosen = Image.new('L', (256, 256), 0)
+        chosen.paste(255, (100, 100, 140, 140))
+        self.tools.set_mask(item['id'], chosen, 'edited', 'inpaint')
+        self.app.comfy = FakeComfy('white')
+        self.app.comfy.upload = lambda name, raw: {'name': name}
+        job = {
+            'id': 'j1',
+            'kind': 'post',
+            'status': 'running',
+            'tool_item': item['id'],
+            'post_op': 'inpaint',
+            'post_options': check_options('inpaint', {'grow': 0, 'feather': 0, 'padding': 20}, {}),
+            'post_source': {
+                'settings': validate_settings(SETTINGS, CATALOG),
+                'positive': 'p',
+                'negative': 'n',
+                'seed': 1,
+            },
+            'post_prefix': 'AssetStudio',
+            'post_mask': self.tools.freeze_mask(item['id'], 'inpaint'),
+        }
+        nodes = self.app.post_graph(job)
+
+        # The mask is moved elsewhere while ComfyUI works: the result still lands on the
+        # area that was chosen, and the newly marked area is left alone.
+        moved = Image.new('L', (256, 256), 0)
+        moved.paste(255, (10, 10, 60, 60))
+        self.tools.set_mask(item['id'], moved, 'edited', 'inpaint')
+        out = io.BytesIO()
+        Image.new('RGB', tuple(job['post_crop']['size']), 'white').save(out, 'PNG')
+        url, _ = self.app.save_post(job, out.getvalue(), nodes)
+        with Image.open(self.root / url.removeprefix('/')) as result:
+            self.assertEqual(result.getpixel((120, 120))[:3], (255, 255, 255))
+            self.assertEqual(result.getpixel((30, 30))[:3], (0, 0, 255))
+
+        # Even with the image's mask deleted, the job's copy is still there.
+        self.tools.mask_path(item['id'], 'inpaint').unlink()
+        self.app.save_post(job, out.getvalue(), nodes)
+
+        # A retry shares the copy; clearing the queue deletes it with the last user.
+        job['status'] = 'failed'
+        self.app.jobs = [job]
+        self.app.retry('j1')
+        retried = self.app.jobs[-1]
+        self.assertEqual(retried['post_mask'], job['post_mask'])
+        copy = self.tools.job_mask_path(job['post_mask'])
+        self.app.remove_finished('j1')
+        self.assertTrue(copy.is_file())
+        retried['status'] = 'cancelled'
+        self.app.remove_finished()
+        self.assertFalse(copy.exists())
 
 
 if __name__ == '__main__':

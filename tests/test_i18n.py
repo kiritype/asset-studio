@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -45,6 +46,14 @@ class MessageTest(unittest.TestCase):
         )
         self.assertIs(message_of(ValueError(message)), message)
         self.assertEqual(message_of(ValueError('plain')), 'plain')
+
+    def test_an_exception_value_is_kept_as_its_message(self):
+        inner = Msg('server.x.offline', 'ComfyUI is offline.')
+        message = Msg('server.x.failed', 'Failed: {error}', error=RuntimeError(inner))
+        self.assertEqual(message, 'Failed: ComfyUI is offline.')
+        self.assertIs(message.params['error'], inner)
+        plain = Msg('server.x.failed', 'Failed: {error}', error=OSError('refused'))
+        self.assertEqual(json.loads(json.dumps(wire(plain)))['params'], {'error': 'refused'})
 
 
 if __name__ == '__main__':
